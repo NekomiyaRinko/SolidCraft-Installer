@@ -17,7 +17,16 @@ public partial class DownloadViewModel : ObservableObject
     public LoaderSelectionViewModel InstanceLoader { get; }
     [ObservableProperty] private MinecraftVersionEntry? selectedMinecraftVersion;
     [ObservableProperty] private string instanceName = "";
-    [ObservableProperty] private bool isRefreshingVersions;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPageBusy), nameof(IsPageInteractive), nameof(PageBusyMessage))]
+    private bool isRefreshingVersions;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPageBusy), nameof(IsPageInteractive), nameof(PageBusyMessage))]
+    private bool isSubmittingGame;
+    public bool IsPageBusy => IsRefreshingVersions || NewGameLoader.IsLoading || IsSubmittingGame;
+    public bool IsPageInteractive => !IsPageBusy;
+    public string PageBusyMessage => IsSubmittingGame ? "正在添加下载任务…" : "正在加载版本列表…";
+    internal Task SubmissionFeedback { get; private set; } = Task.CompletedTask;
     [ObservableProperty] private InstanceMetadata? targetInstance;
     [ObservableProperty] private string currentLoader = "未安装加载器";
     [ObservableProperty] private bool isLoaderConfirmationVisible;
@@ -31,6 +40,12 @@ public partial class DownloadViewModel : ObservableObject
     {
         State = state; _settings = settings;
         NewGameLoader = new(state); InstanceLoader = new(state);
+        NewGameLoader.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName != nameof(NewGameLoader.IsLoading)) return;
+            OnPropertyChanged(nameof(IsPageBusy)); OnPropertyChanged(nameof(IsPageInteractive));
+            OnPropertyChanged(nameof(PageBusyMessage));
+        };
         InstanceLoader.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName is nameof(InstanceLoader.SelectedType) or nameof(InstanceLoader.SelectedVersion)) CancelConfirmation();
@@ -90,21 +105,32 @@ public partial class DownloadViewModel : ObservableObject
     [RelayCommand] public async Task RefreshVersionsAsync()
     {
         if (IsRefreshingVersions) return;
-        long configuration = State.ConfigurationVersion;
         IsRefreshingVersions = true;
         try
         {
-            var manifest = await State.Versions.GetManifestAsync(default);
-            if (configuration != State.ConfigurationVersion) return;
-            _allMinecraftVersions = manifest.Versions;
-            ApplyMinecraftFilter();
+            while (true)
+            {
+                long configuration = State.ConfigurationVersion;
+                try
+                {
+                    var manifest = await State.Versions.GetManifestAsync(default);
+                    if (configuration != State.ConfigurationVersion) continue;
+                    _allMinecraftVersions = manifest.Versions;
+                    ApplyMinecraftFilter();
+                }
+                catch (Exception ex)
+                {
+                    if (configuration != State.ConfigurationVersion) continue;
+                    State.ReportError("版本列表获取失败", ex);
+                }
+                return;
+            }
         }
-        catch (Exception ex) { State.ReportError("版本列表获取失败", ex); }
         finally { IsRefreshingVersions = false; }
     }
     [RelayCommand(AllowConcurrentExecutions = true)] private async Task InstallGameAsync()
     {
-        if (SelectedMinecraftVersion is null) return;
+        if (IsPageBusy || SelectedMinecraftVersion is null || !NewGameLoader.CanInstall) return;
         LoaderSelection? selection;
         try { selection = NewGameLoader.GetSelection(); } catch (Exception ex) { State.ReportError("安装参数无效", ex); return; }
         var version = SelectedMinecraftVersion;
@@ -113,30 +139,39 @@ public partial class DownloadViewModel : ObservableObject
         long configuration = State.ConfigurationVersion;
         var previousTarget = TargetInstance?.Id;
         InstanceMetadata? installed = null;
-        await State.EnqueueAsync(name, async context =>
+        Task<bool> completion;
+        IsSubmittingGame = true;
+        try
         {
-            if (selection is not null)
+            completion = State.EnqueueAsync(name, async context =>
             {
-                var report = await State.Loaders.ValidateCompatibilityAsync(new(version.Id, selection, java), context.CancellationToken);
-                if (report.Status != CompatibilityStatus.Compatible) throw new InvalidOperationException(string.Join("；", report.Issues.Select(x => x.Message)));
-            }
-            var metadata = await State.Instances.CreateAsync(new(name, version.Id, IsolationPolicy.PerInstance,
-                new(name, null, string.IsNullOrWhiteSpace(java) ? null : java)), context.CancellationToken);
-            installed = metadata;
-            State.Log("实例已创建：" + metadata.Editable.DisplayName);
-            State.Log("未完成的下载可在实例中继续。");
-            installed = await State.Games.InstallAsync(metadata.Id, version, selection is null ? context : context with
-            {
-                Progress = new MappedProgress(context.Progress, p => p.Step == OperationStep.Saving
-                    ? p with { Step = OperationStep.Assets, StageFraction = 1 } : p)
-            });
-            if (selection is not null)
-            {
-                context.Progress?.Report(new(context.OperationId, installed.Id, 0, OperationStage.InstallingLoader,
-                    null, null, 0, null, "正在安装 " + selection.Kind, OperationStep.Loader));
-                await State.Loaders.InstallAsync(new(installed.Id, installed.Revision, selection, java), LoaderContext(context));
-            }
-        }, GameSteps(selection));
+                if (selection is not null)
+                {
+                    var report = await State.Loaders.ValidateCompatibilityAsync(new(version.Id, selection, java), context.CancellationToken);
+                    if (report.Status != CompatibilityStatus.Compatible) throw new InvalidOperationException(string.Join("；", report.Issues.Select(x => x.Message)));
+                }
+                var metadata = await State.Instances.CreateAsync(new(name, version.Id, IsolationPolicy.PerInstance,
+                    new(name, null, string.IsNullOrWhiteSpace(java) ? null : java)), context.CancellationToken);
+                installed = metadata;
+                State.Log("实例已创建：" + metadata.Editable.DisplayName);
+                State.Log("未完成的下载可在实例中继续。");
+                installed = await State.Games.InstallAsync(metadata.Id, version, selection is null ? context : context with
+                {
+                    Progress = new MappedProgress(context.Progress, p => p.Step == OperationStep.Saving
+                        ? p with { Step = OperationStep.Assets, StageFraction = 1 } : p)
+                });
+                if (selection is not null)
+                {
+                    context.Progress?.Report(new(context.OperationId, installed.Id, 0, OperationStage.InstallingLoader,
+                        null, null, 0, null, "正在安装 " + selection.Kind, OperationStep.Loader));
+                    await State.Loaders.InstallAsync(new(installed.Id, installed.Revision, selection, java), LoaderContext(context));
+                }
+            }, GameSteps(selection));
+            SubmissionFeedback = Task.Delay(650);
+            await SubmissionFeedback;
+        }
+        finally { IsSubmittingGame = false; }
+        await completion;
         if (configuration == State.ConfigurationVersion && installed is not null &&
             (TargetInstance?.Id == previousTarget || TargetInstance?.Id == installed.Id))
         { TargetInstance = installed; await RefreshLoaderAsync(); }

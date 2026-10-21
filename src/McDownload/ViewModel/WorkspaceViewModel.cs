@@ -29,6 +29,16 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     public ObservableCollection<QueuedTaskViewModel> Tasks { get; } = new();
     [ObservableProperty] private QueuedTaskViewModel? currentTask;
     public string QueueSummary => $"{Tasks.Count(x => x.IsRunning)} 项执行中 · {Tasks.Count(x => x.IsPending)} 项等待";
+    [ObservableProperty] private bool hasTaskNotification;
+    private long _notificationGeneration;
+    internal Task TaskNotification { get; private set; } = Task.CompletedTask;
+    private async Task NotifyTaskAddedAsync()
+    {
+        long generation = ++_notificationGeneration;
+        HasTaskNotification = true;
+        await Task.Delay(3000);
+        if (generation == _notificationGeneration) HasTaskNotification = false;
+    }
     public InstanceManager Instances { get; private set; } = null!;
     public HmclDownloadProvider DownloadProvider { get; private set; } = null!;
     public HmclFetchTask Fetcher { get; private set; } = null!;
@@ -116,6 +126,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
             throw new ArgumentException("任务阶段不能为空或重复。", nameof(steps));
         var task = new QueuedTaskViewModel(label, ++_taskOrder, steps, action);
         Tasks.Add(task); _pending.Enqueue(task);
+        TaskNotification = NotifyTaskAddedAsync();
         UpdateQueue();
         IsBusy = true;
         if (!_processing) { _processing = true; _ = ProcessQueueAsync(); }

@@ -2,7 +2,7 @@
     <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="180"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
         <Border Background="#EAF0F7" Padding="16,24"><DockPanel LastChildFill="True">
             <Button x:Name="OpenTasksButton" DockPanel.Dock="Bottom" Command="{Binding OpenTasksCommand}" CommandParameter="Tasks" Style="{StaticResource NavigationButton}" Margin="0">
-                <StackPanel><TextBlock Text="任务队列"/><TextBlock Text="{Binding State.Status}" FontSize="11" Margin="0,5,0,0" MaxWidth="116" TextTrimming="CharacterEllipsis"/></StackPanel>
+                <StackPanel><TextBlock Text="任务队列"/><TextBlock x:Name="TaskAddedNotice" Text="已添加任务" FontWeight="SemiBold" Margin="0,5,0,0" Visibility="{Binding State.HasTaskNotification, Converter={StaticResource BoolVisibility}}"/><TextBlock Text="{Binding State.QueueSummary}" FontSize="11" Margin="0,5,0,0" MaxWidth="116" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding State.Status}" FontSize="11" Margin="0,5,0,0" MaxWidth="116" TextTrimming="CharacterEllipsis"/></StackPanel>
             </Button>
             <StackPanel><TextBlock Text="SCI" FontSize="28" Foreground="{StaticResource Accent}" FontWeight="Bold"/><TextBlock Text="SolidCraft Installer" Margin="0,4,0,30" FontSize="12"/>
                 <Button Content="我的实例" Command="{Binding NavigateCommand}" CommandParameter="Instances" Style="{StaticResource NavigationButton}"/><Button Content="下载游戏" Command="{Binding NavigateCommand}" CommandParameter="Download" Style="{StaticResource NavigationButton}"/><Button Content="设置" Command="{Binding NavigateCommand}" CommandParameter="Settings" Style="{StaticResource NavigationButton}"/>

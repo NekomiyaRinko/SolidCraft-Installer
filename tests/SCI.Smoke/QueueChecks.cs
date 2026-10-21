@@ -142,6 +142,23 @@ internal static class QueueChecks
         var blocker = state.EnqueueAsync("snapshot blocker", _ => downloadGate.Task);
         model.Download.InstanceName = "QueueOne";
         var installOne = model.Download.InstallGameCommand.ExecuteAsync(null);
+        check(model.Download.IsSubmittingGame && model.Download.IsPageBusy && state.HasTaskNotification,
+            "submitting a download immediately displays page feedback and a task queue notification");
+        model.CurrentPage = "Download";
+        window.UpdateLayout();
+        var downloadView = Find<DownloadView>(window).Single();
+        check(((Border)downloadView.FindName("DownloadOverlay")).IsVisible &&
+            ((TextBlock)window.FindName("TaskAddedNotice")).IsVisible &&
+            ((SolidColorBrush)((Button)window.FindName("OpenTasksButton")).Background).Color == Color.FromRgb(25, 118, 210),
+            "submission overlay and highlighted task queue notice are wired to the visible interface");
+        capture("SCI-download-submitted", null);
+        await model.NavigateCommand.ExecuteAsync("Settings");
+        check(model.CurrentPage == "Settings" && model.Download.IsSubmittingGame, "submission overlay does not block sidebar navigation");
+        await model.Download.InstallGameCommand.ExecuteAsync(null);
+        check(state.Tasks.Count(x => x.Title == "QueueOne") == 1, "rapid repeated clicks do not enqueue duplicate downloads");
+        await model.Download.SubmissionFeedback;
+        await Flush(window);
+        check(!model.Download.IsPageBusy && !installOne.IsCompleted, "submission overlay ends before the queued download finishes");
         check(model.Download.InstallGameCommand.CanExecute(null), "installation command permits a second submission while the first is queued");
         model.Download.InstanceName = "QueueTwo";
         var installTwo = model.Download.InstallGameCommand.ExecuteAsync(null);
@@ -234,6 +251,8 @@ internal static class QueueChecks
             }
         }
 
+        await state.TaskNotification;
+        check(!state.HasTaskNotification, "latest task notification expires without leaving a permanent highlight");
         using var http = new HttpClient(handler, false);
         using var stopping = new WorkspaceViewModel(http, new DiagnosticLog(Path.Combine(root, "queue-stop-logs")));
         var stopCleanup = Gate();

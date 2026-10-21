@@ -662,6 +662,13 @@ internal static class FeatureChecks
             ["ExternalFabric"] = """{"id":"ExternalFabric","inheritsFrom":"1.20.1","libraries":[{"name":"net.fabricmc:fabric-loader:0.16.9"},{"name":"net.fabricmc:intermediary:1.20.1"}]}""",
             ["ExternalForge"] = """{"id":"ExternalForge","inheritsFrom":"1.20.1","libraries":[{"name":"net.minecraftforge:forge:1.20.1-47.3.0"}]}""",
             ["ExternalNeo"] = """{"id":"ExternalNeo","inheritsFrom":"1.21.1","libraries":[{"name":"net.neoforged:neoforge:21.1.100"}]}""",
+            ["ExternalForgeArgs"] = """{"id":"ExternalForgeArgs","arguments":{"game":["--fml.forgeVersion","52.1.20","--fml.mcVersion","1.21.1"]},"libraries":[{"name":"net.minecraftforge:fmlloader:1.21.1-52.1.20"}]}""",
+            ["ExternalNeoArgs"] = """{"id":"ExternalNeoArgs","inheritsFrom":"1.21.1","arguments":{"game":["--fml.neoForgeVersion","21.1.100","--fml.mcVersion","1.21.1"]},"libraries":[]}""",
+            ["ExternalLegacyNeo"] = """{"id":"ExternalLegacyNeo","minecraftArguments":"--fml.forgeVersion 47.1.106 --fml.mcVersion 1.20.1 --fml.forgeGroup net.neoforged","libraries":[]}""",
+            ["ExternalConditionalForge"] = """{"id":"ExternalConditionalForge","arguments":{"game":[{"rules":[{"action":"allow"}],"value":["--fml.forgeVersion=47.3.0","--fml.mcVersion=1.20.1"]}]}}""",
+            ["ExternalPatchNeo"] = """{"id":"ExternalPatchNeo","patches":[{"id":"game","version":"1.21.1"},{"id":"neoforge","version":"21.1.100"}]}""",
+            ["ExternalInheritedForge"] = """{"id":"ExternalInheritedForge","inheritsFrom":"ExternalForgeArgs"}""",
+            ["ExternalVanilla"] = """{"id":"ExternalVanilla","clientVersion":"1.21.1","arguments":{"game":["--username","Player"]},"libraries":[{"name":"cpw.mods:modlauncher:11.0.4"}]}""",
             ["Broken"] = "{broken",
             ["Cycle"] = """{"id":"Cycle","inheritsFrom":"Cycle"}"""
         })
@@ -676,6 +683,21 @@ internal static class FeatureChecks
         check(!external.CanManage && external.MinecraftVersion == "1.20.1" && external.Loader == "Fabric · 0.16.9", "standard Fabric recognized read-only");
         check(model.Instances.Instances.Single(x => x.Name == "ExternalForge").Loader == "Forge · 47.3.0", "standard Forge recognized");
         check(model.Instances.Instances.Single(x => x.Name == "ExternalNeo").Loader == "NeoForge · 21.1.100", "standard NeoForge recognized with missing parent");
+        foreach (var (name, minecraft, loader) in new[]
+        {
+            ("ExternalForgeArgs", "1.21.1", "Forge · 52.1.20"),
+            ("ExternalNeoArgs", "1.21.1", "NeoForge · 21.1.100"),
+            ("ExternalLegacyNeo", "1.20.1", "NeoForge · 47.1.106"),
+            ("ExternalConditionalForge", "1.20.1", "Forge · 47.3.0"),
+            ("ExternalPatchNeo", "1.21.1", "NeoForge · 21.1.100"),
+            ("ExternalInheritedForge", "1.21.1", "Forge · 52.1.20"),
+            ("ExternalVanilla", "1.21.1", "未安装加载器")
+        })
+        {
+            var found = model.Instances.Instances.Single(x => x.Name == name);
+            check(found.MinecraftVersion == minecraft && found.Loader == loader && !found.CanManage,
+                "external metadata detection remains read-only: " + name);
+        }
         check(model.Instances.Instances.Single(x => x.Name == "Broken").Details.Contains("读取失败") && model.Instances.Instances.Any(x => x.Name == "Cycle"), "bad JSON and cyclic inheritance isolated");
         model.Instances.SelectedInstance = external;
         await model.Instances.ManageLoaderCommand.ExecuteAsync(null);

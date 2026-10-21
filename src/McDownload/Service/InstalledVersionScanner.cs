@@ -75,9 +75,27 @@ public sealed class InstalledVersionScanner(InstanceManager instances)
         foreach (var json in documents)
         {
             minecraft ??= json["clientVersion"]?.GetValue<string>();
+            var arguments = ReadGameArguments(json);
+            minecraft ??= ArgumentValue(arguments, "--fml.mcVersion");
+            string? neoVersion = ArgumentValue(arguments, "--fml.neoForgeVersion");
+            string? forgeVersion = ArgumentValue(arguments, "--fml.forgeVersion");
+            if (loader is null && neoVersion is { Length: > 0 }) loader = new(LoaderKind.NeoForge, neoVersion);
+            if (loader is null && forgeVersion is { Length: > 0 })
+                loader = new(ArgumentValue(arguments, "--fml.forgeGroup") == "net.neoforged" ? LoaderKind.NeoForge : LoaderKind.Forge, forgeVersion);
             if (json["patches"] is JsonArray patches)
                 foreach (var patch in patches)
+                {
                     if (patch?["id"]?.GetValue<string>() == "game") minecraft ??= patch?["version"]?.GetValue<string>();
+                    if (loader is null && patch?["version"]?.GetValue<string>() is { Length: > 0 } patchVersion)
+                    {
+                        LoaderKind? kind = patch?["id"]?.GetValue<string>() switch
+                        {
+                            "forge" => LoaderKind.Forge, "neoforge" => LoaderKind.NeoForge,
+                            "fabric" => LoaderKind.Fabric, _ => null
+                        };
+                        if (kind is not null) loader = new(kind.Value, patchVersion);
+                    }
+                }
             var libraries = (json["libraries"] as JsonArray ?? new()).OfType<JsonObject>();
             foreach (var library in libraries)
             {
@@ -100,5 +118,36 @@ public sealed class InstalledVersionScanner(InstanceManager instances)
             if (parent is null && json["id"]?.GetValue<string>() is { } id) minecraft ??= id;
         }
         return (minecraft, loader);
+    }
+
+    private static IReadOnlyList<string> ReadGameArguments(JsonObject json)
+    {
+        var result = new List<string>();
+        if (json["arguments"]?["game"] is JsonArray game)
+            foreach (var argument in game)
+            {
+                if (argument is JsonValue value && value.TryGetValue<string>(out var text)) result.Add(text);
+                else if (argument is JsonObject conditional)
+                {
+                    if (conditional["value"] is JsonValue single && single.TryGetValue<string>(out var item)) result.Add(item);
+                    else if (conditional["value"] is JsonArray values)
+                        foreach (var entry in values.OfType<JsonValue>())
+                            if (entry.TryGetValue<string>(out var part)) result.Add(part);
+                }
+            }
+        if (json["minecraftArguments"]?.GetValue<string>() is { } legacy)
+            foreach (Match match in Regex.Matches(legacy, "\"([^\"]*)\"|'([^']*)'|([^\\s]+)"))
+                result.Add(match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Success ? match.Groups[2].Value : match.Groups[3].Value);
+        return result;
+    }
+
+    private static string? ArgumentValue(IReadOnlyList<string> arguments, string key)
+    {
+        for (int i = 0; i < arguments.Count; i++)
+        {
+            if (arguments[i].StartsWith(key + "=", StringComparison.Ordinal)) return arguments[i][(key.Length + 1)..];
+            if (arguments[i] == key && i + 1 < arguments.Count && !arguments[i + 1].StartsWith("--", StringComparison.Ordinal)) return arguments[i + 1];
+        }
+        return null;
     }
 }

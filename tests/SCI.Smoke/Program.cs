@@ -68,6 +68,7 @@ internal static class Program
                 await model.Instances.RefreshAsync();
                 Check(model.Instances.Instances.Count == 1, "instance list");
                 await UiChecks.RunAsync(window, model, Check, Capture);
+                await DownloadFeedbackChecks.RunAsync(window, model, handler, Check, Capture);
                 await ColorStateChecks.RunAsync(window, model, Check, Capture);
                 await QueueChecks.RunAsync(window, model, root, handler, Check, Capture);
                 await SettingsStyleChecks.RunAsync(window, root, handler, Check, Capture);

@@ -36,7 +36,7 @@ public partial class MainWindowViewModel : ObservableObject
         CurrentPage = "Tasks";
     }
     [RelayCommand] private void CloseTasks() => CurrentPage = _taskReturnPage;
-    [RelayCommand] private async Task NavigateAsync(string page)
+    [RelayCommand(AllowConcurrentExecutions = true)] private async Task NavigateAsync(string page)
     {
         CurrentPage = page;
         if (page == "Instances") await Instances.RefreshAsync();
