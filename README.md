@@ -99,13 +99,17 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish.ps1
 
 ## 许可证与来源
 
-SCI 按 **GNU GPL v3 或更高版本**发布，是基于 HMCL 组件修改的独立产品，非 HMCL 官方发行版。下载源和文件获取组件改编自 [HMCL](https://github.com/HMCL-dev/HMCL/tree/acc9740fa9289ded38553b6a35045fd608c1ea99)。
+SCI 按 **GNU GPL v3 或更高版本**发布，是基于 HMCL 组件修改的独立产品，非 HMCL 官方发行版。下载源管理、文件获取组件及游戏本体下载逻辑改编自 [HMCL](https://github.com/HMCL-dev/HMCL/tree/acc9740fa9289ded38553b6a35045fd608c1ea99)。
 
 Copyright (C) 2020–2026 huangyuhui and HMCL contributors.
 
-- [`LICENSE`](LICENSE)：GPL v3 完整文本。
-- [`HMCL-ADDITIONAL-TERMS.md`](HMCL-ADDITIONAL-TERMS.md)：HMCL 附加条款。
-- [`NOTICE`](NOTICE)：来源与修改声明。
-- [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md)：`CommunityToolkit.Mvvm 8.4.0` 的 MIT 版权、许可全文及随包第三方声明。
+- [LICENSE](LICENSE)：GPL v3 完整文本。
+- [HMCL-ADDITIONAL-TERMS.md](HMCL-ADDITIONAL-TERMS.md)：HMCL 附加条款。
+- [NOTICE](NOTICE)：来源与修改声明。
+- [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)：CommunityToolkit.Mvvm 8.4.0 的 MIT 版权、许可全文及随包第三方声明。
 
-SCI 的 GPL 声明不改变第三方组件各自的许可。HMCL 附加条款要求修改版以名称或版本号区别于原版，并保留软件内展示的版权声明；SCI 使用独立产品名，并在设置页保留 HMCL 版权与来源说明。.NET Runtime、Minecraft 文件及加载器不随 SCI 发布包捆绑，各自由其权利方的许可或使用条款管理。
+SCI 使用 BMCLAPI（https://bmclapi2.bangbang93.com）作为 Minecraft 资源下载的镜像源。BMCLAPI 由 bangbang93 开发并维护，其服务条款要求使用者在下载界面标明来源。BMCLAPI 下的文件归源站点所有，本程序不对其完整性、有效性或实时性作出保证。
+
+SCI 的 GPL 声明不改变第三方组件各自的许可。HMCL 附加条款要求修改版以名称或版本号区别于原版，并保留软件内展示的版权声明；SCI 使用独立产品名，并在设置页保留 HMCL 版权与来源说明。.NET Runtime 不随 SCI 发布包捆绑，由其权利方的许可管理。Minecraft 文件及加载器由 SCI 从 Mojang 或加载器官方源或第三方镜像源获取后写入用户本地实例目录，不随 SCI 发布包捆绑，各自由其权利方的使用条款管理。
+
+SCI 不托管、不分发游戏文件。
