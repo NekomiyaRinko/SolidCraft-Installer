@@ -2,10 +2,7 @@ using McDownload.Model;
 
 namespace McDownload.Service;
 
-/// <remarks>
-/// 同一实例最多安装一种加载器；加载器操作不删除 mods 或 saves。
-/// HMCL 文档包含 Quilt；按 PCL 2.14.0.0 默认不提供 Quilt。
-/// </remarks>
+/// <remarks>同一实例最多安装一种加载器；加载器操作不删除 mods 或 saves。</remarks>
 public interface ILoaderInstaller
 {
     Task<LoaderState> GetStateAsync(InstanceId instanceId, CancellationToken cancellationToken);

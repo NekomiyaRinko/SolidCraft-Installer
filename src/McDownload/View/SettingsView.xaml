@@ -1,0 +1,33 @@
+<UserControl x:Class="McDownload.View.SettingsView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel><TextBlock Text="设置" Style="{StaticResource Heading}"/><StackPanel Style="{StaticResource IdlePanel}"><Border Style="{StaticResource Card}"><StackPanel>
+        <TextBlock Text="Java" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="Java 路径" Style="{StaticResource Label}"/><DockPanel><Button x:Name="JavaBrowseButton" Content="浏览" DockPanel.Dock="Right" Command="{Binding BrowseJavaCommand}" Style="{StaticResource RowButton}"/><TextBox x:Name="JavaPathInput" Text="{Binding JavaPath, UpdateSourceTrigger=LostFocus}"/></DockPanel><TextBlock Text="留空时自动查找 Java。Forge 与 NeoForge 安装可能需要 Java。" Style="{StaticResource Label}" TextWrapping="Wrap"/>
+        <TextBlock Text="默认内存（MB）" Style="{StaticResource Label}"/><TextBox x:Name="MemoryInput" Text="{Binding DefaultMemoryMb, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True}"/><TextBlock Text="保存为全局偏好，不会分配内存。" Style="{StaticResource Label}" TextWrapping="Wrap"/>
+    </StackPanel></Border>
+    <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="下载源" FontSize="17" FontWeight="SemiBold"/>
+        <ComboBox x:Name="DownloadSourceCombo" ItemsSource="{Binding DownloadSources}" SelectedItem="{Binding SelectedDownloadSource}" Margin="0,12,0,0"/>
+        <TextBlock Text="BMCLAPI 提供镜像加速。镜像超时、请求失败或摘要不一致时回退官方源。" Style="{StaticResource Label}" TextWrapping="Wrap"/>
+    </StackPanel></Border>
+    <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="游戏目录" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="Minecraft 根目录" Style="{StaticResource Label}"/><DockPanel><Button x:Name="RootBrowseButton" Content="浏览" DockPanel.Dock="Right" Command="{Binding BrowseRootCommand}" Style="{StaticResource RowButton}"/><TextBox x:Name="MinecraftRootInput" Text="{Binding MinecraftRoot, UpdateSourceTrigger=LostFocus}"/></DockPanel>
+        <Button Content="使用程序目录下的 .minecraft" Command="{Binding UseDefaultRootCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+        <TextBlock Text="共享资源目录" Style="{StaticResource Label}"/><TextBox Text="{Binding AssetsPath, Mode=OneWay}" IsReadOnly="True"/><TextBlock Text="共享依赖库目录" Style="{StaticResource Label}"/><TextBox Text="{Binding LibrariesPath, Mode=OneWay}" IsReadOnly="True"/><TextBlock Text="SCI 实例的模组与存档独立。已有版本只读显示；切换目录不会迁移文件。" Style="{StaticResource Label}" TextWrapping="Wrap"/></StackPanel></Border>
+    <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="#65758A" Margin="0,0,0,16"/>
+    </StackPanel>
+    <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="诊断日志" FontSize="17" FontWeight="SemiBold"/>
+        <TextBlock Text="当前日志文件" Style="{StaticResource Label}"/><TextBox Text="{Binding DiagnosticLogPath, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"/>
+        <TextBlock Text="记录启动环境、请求、回退、异常链和操作结果。日志仅保存在本机；链接参数、令牌和用户目录会被隐藏。" Style="{StaticResource Label}" TextWrapping="Wrap"/>
+        <WrapPanel Margin="0,14,0,0">
+            <WrapPanel.Style><Style TargetType="WrapPanel"><Style.Triggers><DataTrigger Binding="{Binding IsManagingLogs}" Value="True"><Setter Property="IsEnabled" Value="False"/></DataTrigger></Style.Triggers></Style></WrapPanel.Style>
+            <Button Content="打开日志文件夹" Command="{Binding OpenLogsCommand}"/>
+            <Button x:Name="LogExportButton" Content="导出日志" Command="{Binding ExportLogsCommand}"/>
+            <Button x:Name="LogDeleteButton" Content="删除日志" Command="{Binding RequestDeleteLogsCommand}" Style="{StaticResource Danger}"/>
+        </WrapPanel>
+        <TextBlock Text="{Binding LogMessage}" TextWrapping="Wrap" Foreground="#65758A" Margin="0,8,0,0"/>
+    </StackPanel></Border>
+    <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="关于与许可证" FontSize="17" FontWeight="SemiBold"/>
+        <TextBlock Text="SCI 使用基于 HMCL 修改的下载组件；SCI 是独立修改版本，非 HMCL 官方版本。" Style="{StaticResource Label}" TextWrapping="Wrap"/>
+        <TextBlock Text="Copyright © 2020–2026 huangyuhui and HMCL contributors." Style="{StaticResource Label}" TextWrapping="Wrap"/>
+        <TextBlock Text="本程序按 GNU GPL v3 或更高版本发布，不提供担保；接收者可依许可证复制、修改和分发。完整许可证、来源声明与附加条款随程序附带。" Style="{StaticResource Label}" TextWrapping="Wrap"/>
+        <Button Content="打开许可证文件夹" Command="{Binding OpenLicenseFilesCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+    </StackPanel></Border>
+    </StackPanel></ScrollViewer>
+</UserControl>

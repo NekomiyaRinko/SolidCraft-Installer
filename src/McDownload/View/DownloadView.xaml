@@ -1,0 +1,16 @@
+<UserControl x:Class="McDownload.View.DownloadView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:McDownload.View">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel><TextBlock Text="下载游戏" Style="{StaticResource Heading}"/><Border Style="{StaticResource Card}"><StackPanel>
+        <TextBlock Text="实例名称" Style="{StaticResource Label}"/><TextBox Text="{Binding InstanceName, UpdateSourceTrigger=PropertyChanged}"/>
+        <TextBlock Text="Minecraft 版本" Style="{StaticResource Label}"/>
+        <DockPanel><Button x:Name="MinecraftRefreshButton" DockPanel.Dock="Right" Content="刷新版本" Command="{Binding RefreshVersionsCommand}" Style="{StaticResource RowButton}"/>
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="110"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <ComboBox x:Name="MinecraftChannelCombo" ItemsSource="{Binding Channels}" SelectedItem="{Binding SelectedMinecraftChannel}" MinWidth="0"/>
+                <ComboBox x:Name="MinecraftVersionCombo" Grid.Column="2" ItemsSource="{Binding MinecraftVersions}" DisplayMemberPath="Id" SelectedItem="{Binding SelectedMinecraftVersion}" MinWidth="0"/>
+            </Grid>
+        </DockPanel>
+        <local:LoaderVersionSelector DataContext="{Binding NewGameLoader}"/>
+        <TextBlock Text="模组与存档按实例独立，资源与依赖库共享。" Foreground="#65758A" Margin="0,16"/>
+        <Button Content="下载并安装" Command="{Binding InstallGameCommand}" IsEnabled="{Binding NewGameLoader.CanInstall}" Style="{StaticResource Primary}" HorizontalAlignment="Left"/>
+    </StackPanel></Border>
+    </StackPanel></ScrollViewer>
+</UserControl>
