@@ -21,10 +21,13 @@ public sealed class GameDownloadService(InstanceManager instances, VersionResolv
         var resolved = await versions.ResolveLockedAsync(vanilla, metadata, new(id, 64, true), token);
         var json = resolved.EffectiveDocument.Json;
         long sequence = 0;
-        void Report(string name, double? fraction = null) => context.Progress?.Report(new(context.OperationId, id,
-            Interlocked.Increment(ref sequence), OperationStage.Downloading, fraction, fraction, 0, null, name));
-        Report("正在下载客户端");
-        await FetchAsync(json["downloads"]?["client"] as JsonObject ?? throw new InvalidDataException("客户端信息缺失。"), paths.ClientJarFile, token);
+        void Report(OperationStep step, string name, double? fraction = null) => context.Progress?.Report(new(context.OperationId, id,
+            Interlocked.Increment(ref sequence), OperationStage.Downloading, null, fraction, 0, null, name, step));
+        Report(OperationStep.Client, "正在下载客户端", 0);
+        await FetchAsync(json["downloads"]?["client"] as JsonObject ?? throw new InvalidDataException("客户端信息缺失。"), paths.ClientJarFile, token,
+            (bytes, total) => Report(OperationStep.Client, "正在下载客户端", total is > 0 ? (double)bytes / total.Value : null));
+        Report(OperationStep.Client, "客户端已完成", 1);
+        Report(OperationStep.Libraries, "正在下载依赖库", 0);
         if (json["libraries"] is JsonArray libraries)
         {
             var applicableLibraries = libraries.OfType<JsonObject>().Where(IsWindows).ToArray();
@@ -33,7 +36,8 @@ public sealed class GameDownloadService(InstanceManager instances, VersionResolv
             await fetcher.ForEachAsync(applicableLibraries, 8, async (library, cancellation) =>
             {
                 cancellation.ThrowIfCancellationRequested();
-                Report("下载依赖库：" + library["name"]?.GetValue<string>());
+                Report(OperationStep.Libraries, "下载依赖库：" + library["name"]?.GetValue<string>(),
+                    (double)Volatile.Read(ref completed) / Math.Max(1, applicableLibraries.Length));
                 if (library["downloads"]?["artifact"] is JsonObject artifact)
                     await FetchAsync(artifact, InstanceManager.Child(paths.LibrariesDirectory, VersionResolver.Text(artifact, "path")), cancellation);
                 if (library["natives"]?["windows"]?.GetValue<string>() is string classifier)
@@ -44,14 +48,16 @@ public sealed class GameDownloadService(InstanceManager instances, VersionResolv
                     await FetchAsync(native, InstanceManager.Child(paths.LibrariesDirectory, VersionResolver.Text(native, "path")), cancellation);
                 }
                 int count = Interlocked.Increment(ref completed);
-                if (count % 10 == 0 || count == applicableLibraries.Length) Report($"依赖库 {count}/{applicableLibraries.Length}", (double)count / Math.Max(1, applicableLibraries.Length));
+                if (count % 10 == 0 || count == applicableLibraries.Length) Report(OperationStep.Libraries, $"依赖库 {count}/{applicableLibraries.Length}", (double)count / Math.Max(1, applicableLibraries.Length));
             }, token);
         }
+        Report(OperationStep.Libraries, "依赖库已完成", 1);
+        Report(OperationStep.Assets, "正在下载资源文件", 0);
         if (json["assetIndex"] is JsonObject assetIndex)
         {
             string indexId = VersionResolver.Text(assetIndex, "id"); InstanceManager.ValidateName(indexId);
             string indexPath = InstanceManager.Child(paths.AssetsDirectory, "indexes/" + indexId + ".json");
-            Report("下载资源索引");
+            Report(OperationStep.Assets, "下载资源索引", 0);
             await using (var assetsLease = await instances.LockLibrariesAsync(token))
                 await FetchAsync(assetIndex, indexPath, token);
             var index = await InstanceManager.ReadObjectAsync(indexPath, token);
@@ -71,21 +77,24 @@ public sealed class GameDownloadService(InstanceManager instances, VersionResolv
                 if (index["map_to_resources"]?.GetValue<bool>() == true)
                     await CopyAsync(objectPath, InstanceManager.Child(paths.GameDirectory, "resources/" + item.Key), cancellation);
                 int count = Interlocked.Increment(ref completed);
-                if (count % 50 == 0 || count == entries.Length) Report($"游戏资源 {count}/{entries.Length}", (double)count / Math.Max(1, entries.Length));
+                if (count % 50 == 0 || count == entries.Length) Report(OperationStep.Assets, $"游戏资源 {count}/{entries.Length}", (double)count / Math.Max(1, entries.Length));
             }, token);
         }
+        Report(OperationStep.Assets, "资源文件已完成", 1);
         var baseJson = (JsonObject)json.DeepClone();
         baseJson["id"] = VersionResolver.ParentId(metadata); baseJson.Remove("inheritsFrom"); baseJson.Remove("jar");
         var baseVersion = new VersionDocument(VersionResolver.ParentId(metadata), baseJson);
         var effective = versions.Compose(baseVersion, Array.Empty<VersionPatch>(), metadata.DirectoryName);
-        Report("正在保存版本信息");
-        return await instances.CommitLockedAsync(paths.GameDirectory, metadata, new()
+        Report(OperationStep.Saving, "正在保存版本信息", 0);
+        var result = await instances.CommitLockedAsync(paths.GameDirectory, metadata, new()
         {
             [".launcher/base.json"] = InstanceManager.Serialize(baseJson),
             [metadata.DirectoryName + ".json"] = versions.SerializeStandalone(effective)
         }, token);
+        Report(OperationStep.Saving, "版本信息已保存", 1);
+        return result;
     }
-    private async Task FetchAsync(JsonObject descriptor, string path, CancellationToken token)
+    private async Task FetchAsync(JsonObject descriptor, string path, CancellationToken token, Action<long, long?>? progress = null)
     {
         string hash = VersionResolver.Text(descriptor, "sha1"); VersionResolver.ValidateSha1(hash);
         if (File.Exists(InstanceManager.Extended(path)))
@@ -94,7 +103,7 @@ public sealed class GameDownloadService(InstanceManager instances, VersionResolv
             if (Convert.ToHexString(await SHA1.HashDataAsync(cached, token)).Equals(hash, StringComparison.OrdinalIgnoreCase)) return;
         }
         var uri = new Uri(VersionResolver.Text(descriptor, "url")); VersionResolver.RequireHttps(uri);
-        await fetcher.DownloadAsync(uri, path, hash, descriptor["size"]?.GetValue<long>(), token);
+        await fetcher.DownloadAsync(uri, path, hash, descriptor["size"]?.GetValue<long>(), token, progress);
     }
     private static Task CopyAsync(string source, string target, CancellationToken token) => InstanceManager.AtomicWriteAsync(target, async (output, ct) =>
     {

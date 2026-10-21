@@ -19,14 +19,22 @@ public partial class App : Application
         bool closeAfterCancellation = false;
         window.Closing += (_, args) =>
         {
-            if (!model.State.IsBusy) return;
+            window.CommitSettingsInput();
+            if (!model.State.IsBusy && !model.Settings.IsSaving && !model.Settings.IsManagingLogs) return;
             args.Cancel = true;
             closeAfterCancellation = true;
-            model.State.CancelCommand.Execute(null);
+            model.State.StopQueue();
         };
         model.State.PropertyChanged += (_, args) =>
         {
-            if (closeAfterCancellation && args.PropertyName == nameof(model.State.IsBusy) && !model.State.IsBusy)
+            if (closeAfterCancellation && args.PropertyName == nameof(model.State.IsBusy) &&
+                !model.State.IsBusy && !model.Settings.IsSaving && !model.Settings.IsManagingLogs)
+                Dispatcher.BeginInvoke(() => window.Close());
+        };
+        model.Settings.PropertyChanged += (_, args) =>
+        {
+            if (closeAfterCancellation && args.PropertyName is nameof(model.Settings.IsSaving) or nameof(model.Settings.IsManagingLogs) &&
+                !model.State.IsBusy && !model.Settings.IsSaving && !model.Settings.IsManagingLogs)
                 Dispatcher.BeginInvoke(() => window.Close());
         };
         MainWindow = window; window.Show();

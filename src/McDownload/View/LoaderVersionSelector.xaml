@@ -11,7 +11,7 @@
                     <ComboBox.Style><Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}"><Style.Triggers><DataTrigger Binding="{Binding IsLoading}" Value="True"><Setter Property="IsEnabled" Value="False"/></DataTrigger></Style.Triggers></Style></ComboBox.Style>
                 </ComboBox>
             </Grid>
-            <DockPanel Margin="0,8,0,0"><Button Content="刷新版本" DockPanel.Dock="Right" Command="{Binding ReloadCommand}"/><TextBlock Text="{Binding Message}" Foreground="#65758A" TextWrapping="Wrap" VerticalAlignment="Center"/></DockPanel>
+            <DockPanel Margin="0,8,0,0"><Button Content="刷新版本" DockPanel.Dock="Right" Command="{Binding ReloadCommand}" Style="{StaticResource RowButton}"/><TextBlock Text="{Binding Message}" Foreground="#65758A" TextWrapping="Wrap" VerticalAlignment="Center"/></DockPanel>
         </StackPanel>
     </StackPanel>
 </UserControl>

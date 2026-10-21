@@ -17,6 +17,7 @@ public partial class DownloadViewModel : ObservableObject
     public LoaderSelectionViewModel InstanceLoader { get; }
     [ObservableProperty] private MinecraftVersionEntry? selectedMinecraftVersion;
     [ObservableProperty] private string instanceName = "";
+    [ObservableProperty] private bool isRefreshingVersions;
     [ObservableProperty] private InstanceMetadata? targetInstance;
     [ObservableProperty] private string currentLoader = "未安装加载器";
     [ObservableProperty] private bool isLoaderConfirmationVisible;
@@ -88,76 +89,127 @@ public partial class DownloadViewModel : ObservableObject
     }
     [RelayCommand] public async Task RefreshVersionsAsync()
     {
-        if (State.IsBusy) return;
-        await State.RunAsync("正在获取 Minecraft 版本…", async context =>
+        if (IsRefreshingVersions) return;
+        long configuration = State.ConfigurationVersion;
+        IsRefreshingVersions = true;
+        try
         {
-            var manifest = await State.Versions.GetManifestAsync(context.CancellationToken);
+            var manifest = await State.Versions.GetManifestAsync(default);
+            if (configuration != State.ConfigurationVersion) return;
             _allMinecraftVersions = manifest.Versions;
             ApplyMinecraftFilter();
-        });
+        }
+        catch (Exception ex) { State.ReportError("版本列表获取失败", ex); }
+        finally { IsRefreshingVersions = false; }
     }
-    [RelayCommand] private async Task InstallGameAsync()
+    [RelayCommand(AllowConcurrentExecutions = true)] private async Task InstallGameAsync()
     {
-        if (State.IsBusy || SelectedMinecraftVersion is null) return;
+        if (SelectedMinecraftVersion is null) return;
         LoaderSelection? selection;
         try { selection = NewGameLoader.GetSelection(); } catch (Exception ex) { State.ReportError("安装参数无效", ex); return; }
         var version = SelectedMinecraftVersion;
         string name = ResolveInstanceName(InstanceName, version.Id, selection);
-        await State.RunAsync("正在安装 Minecraft…", async context =>
+        string java = _settings.JavaPath;
+        long configuration = State.ConfigurationVersion;
+        var previousTarget = TargetInstance?.Id;
+        InstanceMetadata? installed = null;
+        await State.EnqueueAsync(name, async context =>
         {
             if (selection is not null)
             {
-                var report = await State.Loaders.ValidateCompatibilityAsync(new(version.Id, selection, _settings.JavaPath), context.CancellationToken);
+                var report = await State.Loaders.ValidateCompatibilityAsync(new(version.Id, selection, java), context.CancellationToken);
                 if (report.Status != CompatibilityStatus.Compatible) throw new InvalidOperationException(string.Join("；", report.Issues.Select(x => x.Message)));
             }
             var metadata = await State.Instances.CreateAsync(new(name, version.Id, IsolationPolicy.PerInstance,
-                new(name, null, string.IsNullOrWhiteSpace(_settings.JavaPath) ? null : _settings.JavaPath)), context.CancellationToken);
-            TargetInstance = metadata;
+                new(name, null, string.IsNullOrWhiteSpace(java) ? null : java)), context.CancellationToken);
+            installed = metadata;
             State.Log("实例已创建：" + metadata.Editable.DisplayName);
             State.Log("未完成的下载可在实例中继续。");
-            TargetInstance = await State.Games.InstallAsync(metadata.Id, version, context);
+            installed = await State.Games.InstallAsync(metadata.Id, version, selection is null ? context : context with
+            {
+                Progress = new MappedProgress(context.Progress, p => p.Step == OperationStep.Saving
+                    ? p with { Step = OperationStep.Assets, StageFraction = 1 } : p)
+            });
             if (selection is not null)
             {
-                await State.Loaders.InstallAsync(new(TargetInstance.Id, TargetInstance.Revision, selection, _settings.JavaPath), context);
+                context.Progress?.Report(new(context.OperationId, installed.Id, 0, OperationStage.InstallingLoader,
+                    null, null, 0, null, "正在安装 " + selection.Kind, OperationStep.Loader));
+                await State.Loaders.InstallAsync(new(installed.Id, installed.Revision, selection, java), LoaderContext(context));
             }
-        });
-        if (TargetInstance is not null) await RefreshLoaderAsync();
+        }, GameSteps(selection));
+        if (configuration == State.ConfigurationVersion && installed is not null &&
+            (TargetInstance?.Id == previousTarget || TargetInstance?.Id == installed.Id))
+        { TargetInstance = installed; await RefreshLoaderAsync(); }
     }
     internal static string ResolveInstanceName(string? name, string minecraftVersion, LoaderSelection? loader)
         => !string.IsNullOrWhiteSpace(name) ? name.Trim() : loader is null ? minecraftVersion :
             $"{minecraftVersion}-{loader.Kind}-{loader.Version}";
 
-    [RelayCommand] private async Task ResumeGameAsync()
+    private static IReadOnlyList<(OperationStep Kind, string Title)> GameSteps(LoaderSelection? loader = null)
     {
-        if (State.IsBusy || TargetInstance is null) return;
+        var steps = new List<(OperationStep, string)>
+        {
+            (OperationStep.Preparing, "准备实例"), (OperationStep.Client, "下载客户端"),
+            (OperationStep.Libraries, "下载依赖库"), (OperationStep.Assets, "下载资源文件")
+        };
+        if (loader is not null) steps.Add((OperationStep.Loader, "安装 " + loader.Kind));
+        steps.Add((OperationStep.Saving, "保存实例"));
+        return steps;
+    }
+
+    private sealed class MappedProgress(IProgress<OperationProgress>? target, Func<OperationProgress, OperationProgress> map)
+        : IProgress<OperationProgress>
+    {
+        public void Report(OperationProgress value) => target?.Report(map(value));
+    }
+
+    private static OperationContext LoaderContext(OperationContext context) => context with
+    {
+        Progress = new MappedProgress(context.Progress, p => p with
+        {
+            Step = p.Stage is OperationStage.Committing or OperationStage.Completed ? OperationStep.Saving : OperationStep.Loader,
+            StageFraction = p.Stage == OperationStage.Completed ? 1 : p.StageFraction
+        })
+    };
+
+    [RelayCommand(AllowConcurrentExecutions = true)] private async Task ResumeGameAsync()
+    {
+        if (TargetInstance is null) return;
         var target = TargetInstance;
-        await State.RunAsync("正在下载 Minecraft…", async context =>
+        long configuration = State.ConfigurationVersion;
+        InstanceMetadata? installed = null;
+        await State.EnqueueAsync(target.Editable.DisplayName + " · 下载 / 校验原版游戏", async context =>
         {
             var manifest = await State.Versions.GetManifestAsync(context.CancellationToken);
             var version = manifest.Versions.First(x => x.Id == target.MinecraftVersionId);
-            TargetInstance = await State.Games.InstallAsync(target.Id, version, context);
-        });
-        await RefreshLoaderAsync();
+            installed = await State.Games.InstallAsync(target.Id, version, context);
+        }, GameSteps());
+        if (configuration == State.ConfigurationVersion && TargetInstance?.Id == target.Id && installed is not null)
+        { TargetInstance = installed; await RefreshLoaderAsync(); }
     }
     [RelayCommand] private void RequestRemove()
     {
         if (State.IsBusy || _loaderState?.InstalledLoader is null || _loaderState.InstanceId != TargetInstance?.Id) return;
         _remove = true; _plan = null; ConfirmationText = "删除当前加载器？"; IsLoaderConfirmationVisible = true;
     }
-    [RelayCommand] private async Task InstallLoaderAsync()
+    [RelayCommand(AllowConcurrentExecutions = true)] private async Task InstallLoaderAsync()
     {
-        if (State.IsBusy || TargetInstance is null) return;
+        if (TargetInstance is null) return;
         LoaderSelection? selection;
         try { selection = InstanceLoader.GetSelection() ?? throw new ArgumentException("请选择 Forge、Fabric 或 NeoForge。"); }
         catch (Exception ex) { State.ReportError("加载器选择无效", ex); return; }
-        var targetId = TargetInstance.Id;
-        if (!await RefreshLoaderAsync() || _loaderState is null || TargetInstance?.Id != targetId) return;
-        var loader = _loaderState;
-        if (_loaderState.InstalledLoader is not null)
+        var target = TargetInstance;
+        var targetId = target.Id;
+        string java = _settings.JavaPath;
+        long configuration = State.ConfigurationVersion;
+        if (target.InstalledLoader is not null)
         {
+            if (State.IsBusy) { State.Error = "请等待任务队列结束后更换加载器。"; return; }
+            if (!await RefreshLoaderAsync() || _loaderState is null || TargetInstance?.Id != targetId) return;
+            var loader = _loaderState;
             await State.RunAsync("正在检查加载器兼容性…", async context =>
             {
-                var prepared = await State.Loaders.PrepareReplacementAsync(new(targetId, loader.Revision, selection, _settings.JavaPath), context.CancellationToken);
+                var prepared = await State.Loaders.PrepareReplacementAsync(new(targetId, loader.Revision, selection, java), context.CancellationToken);
                 if (TargetInstance?.Id != targetId || _loaderState != loader || InstanceLoader.GetSelection() != selection)
                     throw new InvalidOperationException("实例或加载器选择已变化，请重新检查。");
                 _plan = prepared;
@@ -168,9 +220,13 @@ public partial class DownloadViewModel : ObservableObject
             });
             return;
         }
-        await State.RunAsync("正在安装加载器…", context => State.Loaders.InstallAsync(
-            new(targetId, loader.Revision, selection, _settings.JavaPath), context));
-        await RefreshLoaderAsync();
+        await State.EnqueueAsync(target.Editable.DisplayName + " · 安装 " + selection.Kind, context => State.Loaders.InstallAsync(
+            new(targetId, target.Revision, selection, java), LoaderContext(context)), new[]
+            {
+                (OperationStep.Preparing, "检查实例"), (OperationStep.Loader, "安装 " + selection.Kind),
+                (OperationStep.Saving, "保存实例")
+            });
+        if (configuration == State.ConfigurationVersion && TargetInstance?.Id == targetId) await RefreshLoaderAsync();
     }
     [RelayCommand] private async Task ConfirmLoaderAsync()
     {

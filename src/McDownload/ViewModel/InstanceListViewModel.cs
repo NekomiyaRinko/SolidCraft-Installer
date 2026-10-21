@@ -49,7 +49,7 @@ public partial class InstanceListViewModel : ObservableObject
         catch (Exception ex) { State.ReportError("实例列表读取失败", ex); }
     }
     [RelayCommand] private async Task ManageLoaderAsync()
-    { if (!State.IsBusy && SelectedInstance?.Metadata is { } metadata) await _manage(metadata); }
+    { if (SelectedInstance?.Metadata is { } metadata) await _manage(metadata); }
     [RelayCommand] private async Task OpenFolderAsync()
     {
         if (SelectedInstance is null) return;

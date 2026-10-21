@@ -10,6 +10,7 @@ public partial class MainWindowViewModel : ObservableObject
     public DownloadViewModel Download { get; }
     public InstanceListViewModel Instances { get; }
     private readonly List<Task> _backgroundRefreshes = new();
+    private string _taskReturnPage = "Instances";
     public Task BackgroundRefresh => Task.WhenAll(_backgroundRefreshes);
     [ObservableProperty] private string currentPage = "Instances";
     public MainWindowViewModel(HttpClient? http = null, string? settingsFile = null, Service.DiagnosticLog? diagnostics = null)
@@ -28,6 +29,13 @@ public partial class MainWindowViewModel : ObservableObject
         };
     }
     public async Task InitializeAsync() { await Settings.LoadAsync(); await Instances.RefreshAsync(); }
+    [RelayCommand] private void OpenTasks()
+    {
+        if (CurrentPage == "Tasks") return;
+        _taskReturnPage = CurrentPage;
+        CurrentPage = "Tasks";
+    }
+    [RelayCommand] private void CloseTasks() => CurrentPage = _taskReturnPage;
     [RelayCommand] private async Task NavigateAsync(string page)
     {
         CurrentPage = page;

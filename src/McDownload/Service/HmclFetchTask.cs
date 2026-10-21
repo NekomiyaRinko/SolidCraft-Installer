@@ -3,6 +3,7 @@
  * Copyright (C) 2020-2026 huangyuhui and HMCL contributors.
  * This file is distributed under GNU GPL version 3 or later with the
  * additional terms in HMCL-ADDITIONAL-TERMS.md.
+ * Modified for SCI (C# port), 2026-10-21.
  * Upstream: https://github.com/HMCL-dev/HMCL, commit acc9740fa9289ded38553b6a35045fd608c1ea99.
  */
 using System.Diagnostics;

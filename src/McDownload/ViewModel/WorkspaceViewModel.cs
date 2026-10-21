@@ -14,8 +14,21 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     private readonly DiagnosticLog _diagnostics;
     private bool _loggingFailureReported;
     public string? DiagnosticLogPath => _diagnostics.FilePath;
-    public string DiagnosticDirectory => Path.GetDirectoryName(DiagnosticLogPath) ?? DiagnosticLog.DefaultDirectory;
+    public string DiagnosticDirectory => _diagnostics.DirectoryPath;
+    public Task<int> ExportLogsAsync(string destination) => _diagnostics.ExportAsync(destination);
+    public async Task<int> RecycleLogsAsync()
+    {
+        try { return await _diagnostics.RecycleLogsAsync(); }
+        finally { OnPropertyChanged(nameof(DiagnosticLogPath)); OnPropertyChanged(nameof(DiagnosticDirectory)); }
+    }
     private CancellationTokenSource? _cancellation;
+    private readonly Queue<QueuedTaskViewModel> _pending = new();
+    private bool _processing;
+    private bool _stopping;
+    private long _taskOrder;
+    public ObservableCollection<QueuedTaskViewModel> Tasks { get; } = new();
+    [ObservableProperty] private QueuedTaskViewModel? currentTask;
+    public string QueueSummary => $"{Tasks.Count(x => x.IsRunning)} 项执行中 · {Tasks.Count(x => x.IsPending)} 项等待";
     public InstanceManager Instances { get; private set; } = null!;
     public HmclDownloadProvider DownloadProvider { get; private set; } = null!;
     public HmclFetchTask Fetcher { get; private set; } = null!;
@@ -60,24 +73,26 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     {
         message = DiagnosticText.Redact(message);
         _diagnostics.Write("INFO", message);
-        AppendLog(message);
+        AppendLog(message, CurrentTask);
     }
     public void LogException(string message, Exception error)
     {
         _diagnostics.Write("ERROR", message, error);
-        AppendLog(DiagnosticText.Redact(message) + "：" + DiagnosticText.Summary(error));
+        AppendLog(DiagnosticText.Redact(message) + "：" + DiagnosticText.Summary(error), CurrentTask);
     }
     public void ReportError(string message, Exception error)
     { Error = DiagnosticText.Redact(error.Message); LogException(message, error); }
-    private void AppendLog(string message)
+    private void AppendLog(string message, QueuedTaskViewModel? task)
     {
         var dispatcher = System.Windows.Application.Current?.Dispatcher;
         if (dispatcher is not null && !dispatcher.CheckAccess())
         {
-            if (!dispatcher.HasShutdownStarted) dispatcher.BeginInvoke(() => AppendLog(message));
+            if (!dispatcher.HasShutdownStarted) dispatcher.BeginInvoke(() => AppendLog(message, task));
             return;
         }
         Logs.Add($"{DateTime.Now:HH:mm:ss}  {message}");
+        task?.Logs.Add(Logs[^1]);
+        if (task?.Logs.Count > 500) task.Logs.RemoveAt(0);
         if (_diagnostics.Error is not null && !_loggingFailureReported)
         {
             _loggingFailureReported = true;
@@ -85,52 +100,122 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         }
         if (Logs.Count > 500) Logs.RemoveAt(0);
     }
-    public async Task<bool> RunAsync(string label, Func<OperationContext, Task> action)
+    public Task<bool> RunAsync(string label, Func<OperationContext, Task> action)
     {
-        if (IsBusy) return false;
-        IsBusy = true; Error = null; Status = label; Progress = 0; IsIndeterminate = true;
+        if (IsBusy) return Task.FromResult(false);
+        return EnqueueAsync(label, action);
+    }
+
+    public Task<bool> EnqueueAsync(string label, Func<OperationContext, Task> action,
+        IReadOnlyList<(OperationStep Kind, string Title)>? steps = null)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        if (_stopping) return Task.FromResult(false);
+        steps ??= new[] { (OperationStep.Preparing, label) };
+        if (steps.Count == 0 || steps.Select(x => x.Kind).Distinct().Count() != steps.Count)
+            throw new ArgumentException("任务阶段不能为空或重复。", nameof(steps));
+        var task = new QueuedTaskViewModel(label, ++_taskOrder, steps, action);
+        Tasks.Add(task); _pending.Enqueue(task);
+        UpdateQueue();
+        IsBusy = true;
+        if (!_processing) { _processing = true; _ = ProcessQueueAsync(); }
+        return task.Completion.Task;
+    }
+
+    private async Task ProcessQueueAsync()
+    {
+        try
+        {
+            while (_pending.TryDequeue(out var task))
+            {
+                if (!task.IsPending) continue;
+                CurrentTask = task; task.Start(); UpdateQueue();
+                bool success = await ExecuteAsync(task);
+                task.Completion.TrySetResult(success);
+            }
+        }
+        finally
+        {
+            CurrentTask = null; _processing = false; IsBusy = false; IsIndeterminate = false;
+            UpdateQueue(); Changed?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private async Task<bool> ExecuteAsync(QueuedTaskViewModel task)
+    {
+        Error = null; Status = task.Title; Progress = 0; IsIndeterminate = true;
         using var source = new CancellationTokenSource();
         _cancellation = source;
-        var id = Guid.NewGuid();
-        _diagnostics.Write("OPERATION", $"Begin {id:N}: {label}");
+        var id = task.Id;
+        _diagnostics.Write("OPERATION", $"Begin {id:N}: {task.Title}");
         var reporter = new Progress<OperationProgress>(p =>
         {
-            if (_cancellation != source || p.OperationId != id) return;
-            double? fraction = p.OverallFraction ?? p.StageFraction;
-            IsIndeterminate = !fraction.HasValue;
-            Progress = Math.Clamp(fraction ?? 0, 0, 1) * 100;
-            if (!string.IsNullOrEmpty(p.CurrentItem)) { Status = p.CurrentItem; Log(p.CurrentItem); }
+            if (_cancellation != source || p.OperationId != id || !task.IsRunning) return;
+            if (!task.Report(p with { CurrentItem = p.CurrentItem is null ? null : DiagnosticText.Redact(p.CurrentItem) })) return;
+            IsIndeterminate = task.IsIndeterminate; Progress = task.Progress;
+            if (!string.IsNullOrEmpty(p.CurrentItem)) { Status = task.CurrentItem; Log(task.CurrentItem); }
         });
         try
         {
-            Log(label);
-            await action(new(id, reporter, source.Token));
+            Log(task.Title);
+            await task.Action(new(id, reporter, source.Token));
+            task.Finish(QueuedTaskState.Completed);
             Status = "任务完成"; IsIndeterminate = false; Progress = 100; Log(Status);
             return true;
         }
         catch (OperationCanceledException) when (source.IsCancellationRequested)
-        { Status = "任务已取消"; Log(Status); return false; }
+        { task.Finish(QueuedTaskState.Canceled); Status = "任务已取消"; Log(Status); return false; }
         catch (OperationCanceledException ex)
-        { Error = "请求超时或被中断，请重试。"; Status = "任务未完成"; LogException(Error, ex); return false; }
+        { Error = "请求超时或被中断，请重试。"; task.Finish(QueuedTaskState.Failed, Error); Status = "任务未完成"; LogException(Error, ex); return false; }
         catch (Exception ex)
         {
             Error = DiagnosticText.Redact(ex.Message); Status = "任务未完成";
-            LogException($"{label}：{Status}", ex); return false;
+            task.Finish(QueuedTaskState.Failed, Error);
+            LogException($"{task.Title}：{Status}", ex); return false;
         }
         finally
         {
             _diagnostics.Write("OPERATION", $"End {id:N}: {Status}");
-            _cancellation = null; IsBusy = false; IsIndeterminate = false; Changed?.Invoke(this, EventArgs.Empty);
+            _cancellation = null; IsIndeterminate = false; UpdateQueue();
         }
+    }
+
+    private void UpdateQueue()
+    {
+        var ordered = Tasks.OrderBy(x => x.IsRunning ? 0 : x.IsPending ? 1 : 2).ThenBy(x => x.Order).ToArray();
+        for (int i = 0; i < ordered.Length; i++)
+        {
+            int index = Tasks.IndexOf(ordered[i]);
+            if (index != i) Tasks.Move(index, i);
+        }
+        while (Tasks.Count(x => !x.IsPending && !x.IsRunning) > 50)
+            Tasks.Remove(Tasks.First(x => !x.IsPending && !x.IsRunning));
+        OnPropertyChanged(nameof(QueueSummary));
+    }
+
+    [RelayCommand] private void RemoveQueued(QueuedTaskViewModel task)
+    {
+        if (!task.IsPending || !Tasks.Contains(task)) return;
+        task.Finish(QueuedTaskState.Canceled);
+        Tasks.Remove(task); task.Completion.TrySetResult(false); UpdateQueue();
+    }
+
+    public void StopQueue()
+    {
+        _stopping = true;
+        foreach (var task in Tasks.Where(x => x.IsPending).ToArray()) RemoveQueued(task);
+        Cancel();
     }
     [RelayCommand] private void Cancel()
     {
         if (_cancellation is not { IsCancellationRequested: false } cancellation) return;
         Log("已请求取消当前任务。");
         cancellation.Cancel(); Status = "正在取消…";
+        if (CurrentTask is not null) CurrentTask.CurrentItem = Status;
     }
     public void Dispose()
     {
+        StopQueue();
         if (_ownsHttp) _http.Dispose();
         _diagnostics.Dispose();
     }

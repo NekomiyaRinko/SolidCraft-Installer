@@ -40,19 +40,20 @@ internal static class Program
                 foreach (var descendant in Find<T>(child)) yield return descendant;
             }
         }
-        void Capture(string name)
+        void Capture(string name, Window? target = null)
         {
-            window.UpdateLayout();
-            var surface = (FrameworkElement)window.Content;
+            var capturedWindow = target ?? window;
+            capturedWindow.UpdateLayout();
+            var surface = (FrameworkElement)capturedWindow.Content;
             var image = new RenderTargetBitmap((int)surface.ActualWidth, (int)surface.ActualHeight, 96, 96, PixelFormats.Pbgra32);
             var drawing = new DrawingVisual();
             using (var context = drawing.RenderOpen())
             {
                 var bounds = new Rect(0, 0, surface.ActualWidth, surface.ActualHeight);
-                context.DrawRectangle(window.Background, null, bounds);
-                context.DrawRectangle(new VisualBrush(surface), null, bounds);
+                context.DrawRectangle(capturedWindow.Background, null, bounds);
             }
             image.Render(drawing);
+            image.Render(surface);
             var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image));
             string artifacts = Path.Combine(Path.GetTempPath(), "opencode");
             Directory.CreateDirectory(artifacts);
@@ -66,7 +67,11 @@ internal static class Program
                 var instance = await model.State.Instances.CreateAsync(new("Survival", "1.20.1", IsolationPolicy.PerInstance, new("生存世界", null, null)), default);
                 await model.Instances.RefreshAsync();
                 Check(model.Instances.Instances.Count == 1, "instance list");
-                foreach (string page in new[] { "Instances", "Download", "Settings", "Loaders" })
+                await UiChecks.RunAsync(window, model, Check, Capture);
+                await ColorStateChecks.RunAsync(window, model, Check, Capture);
+                await QueueChecks.RunAsync(window, model, root, handler, Check, Capture);
+                await SettingsStyleChecks.RunAsync(window, root, handler, Check, Capture);
+                foreach (string page in new[] { "Instances", "Download", "Settings", "Loaders", "Tasks" })
                 {
                     model.CurrentPage = page; window.UpdateLayout();
                     Check(Find<UserControl>(window).Count(x => x.IsVisible && x is not LoaderVersionSelector) == 1, "single page " + page);
@@ -77,8 +82,8 @@ internal static class Program
                 model.Download.IsLoaderConfirmationVisible = true; model.Download.ConfirmationText = "删除当前加载器？"; window.UpdateLayout();
                 Check(Find<Button>(window).Any(x => x.IsVisible && Equals(x.Content, "确认")), "confirmation visible");
                 model.CurrentPage = "Download"; model.State.IsBusy = true; window.UpdateLayout();
-                Check(Find<Button>(window).First(x => Equals(x.Content, "下载并安装")).IsEnabled == false, "install disabled while busy");
-                Check(Find<Button>(window).First(x => Equals(x.Content, "取消任务")).IsEnabled, "cancel enabled");
+                Check(Find<Button>(window).First(x => Equals(x.Content, "下载并安装")).IsEnabled, "install remains enabled for queue submissions while busy");
+                model.OpenTasksCommand.Execute(null); window.UpdateLayout();
                 model.State.IsBusy = false;
                 Check(!Find<Button>(window).Any(x => (x.Content as string)?.Contains("启动") == true), "no launch action");
                 var a = await model.State.Instances.CreateAsync(new("A", "1.20.1", IsolationPolicy.PerInstance, new("A", null, null)), default);
@@ -121,6 +126,11 @@ internal static class Program
                 Check(Find<Button>(window).Any(x => x.IsVisible && Equals(x.Content, "打开日志文件夹")), "diagnostic log action visible");
                 Check(Find<TextBlock>(window).Any(x => x.IsVisible && x.Text.Contains("Copyright © 2020–2026 huangyuhui")), "HMCL copyright and license notice visible");
                 Check(Find<Button>(window).Any(x => x.IsVisible && Equals(x.Content, "打开许可证文件夹")), "license files action visible");
+                string thirdPartyNotices = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "THIRD-PARTY-NOTICES.md"));
+                Check(thirdPartyNotices.Contains("CommunityToolkit.Mvvm 8.4.0") && thirdPartyNotices.Contains("Copyright © .NET Foundation and Contributors"),
+                    "MVVM dependency copyright notice is distributed with the application");
+                Check(thirdPartyNotices.Contains("The above copyright notice and this permission notice") && thirdPartyNotices.Contains("THE SOFTWARE IS PROVIDED"),
+                    "MVVM dependency MIT permission and warranty text are distributed intact");
                 Capture("SCI-settings");
                 model.CurrentPage = "Instances";
                 await model.Download.SelectInstanceAsync(instance);

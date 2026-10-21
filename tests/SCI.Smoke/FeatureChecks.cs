@@ -709,7 +709,7 @@ internal static class FeatureChecks
         var settings = new SettingsViewModel(model.State, Path.Combine(root, "settings-test.json"))
         { MinecraftRoot = root, SelectedDownloadSource = "官方" };
         await settings.SaveCommand.ExecuteAsync(null);
-        check(settings.Message.Contains("已保存") && model.Download.TargetInstance is null && model.Instances.SelectedInstance is null, "root/source reconfigure clears stale targets");
+        check(settings.Message == "已自动保存" && model.Download.TargetInstance is null && model.Instances.SelectedInstance is null, "root/source reconfigure clears stale targets");
         using var saved = JsonDocument.Parse(await File.ReadAllBytesAsync(Path.Combine(root, "settings-test.json")));
         check(saved.RootElement.GetProperty("source").GetString() == "Official" && saved.RootElement.GetProperty("rootMode").GetString() == "custom", "source and root mode persisted");
         model.State.Configure(root);

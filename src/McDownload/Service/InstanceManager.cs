@@ -143,7 +143,7 @@ public sealed class InstanceManager : IInstanceManager
             }
         }
         names.Sort(StringComparer.OrdinalIgnoreCase);
-        string message = $"将回收实例“{metadata.Editable.DisplayName}”的整个目录，包括模组和配置。";
+        string message = $"将回收实例“{metadata.Editable.DisplayName}”的整个目录，包括模组、存档和配置。";
         if (names.Count > 0) message += "将删除的存档：" + string.Join("、", names) + "。";
         if (!request.UserDataDeletionConfirmed)
         {
@@ -510,7 +510,7 @@ public sealed class InstanceManager : IInstanceManager
         return Convert.ToHexString(await SHA256.HashDataAsync(input, token));
     }
 
-    private static Task RecycleAsync(string directory, CancellationToken token)
+    internal static Task RecycleAsync(string directory, CancellationToken token)
     {
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var thread = new Thread(() =>
@@ -529,7 +529,8 @@ public sealed class InstanceManager : IInstanceManager
                 token.ThrowIfCancellationRequested();
                 Marshal.ThrowExceptionForHR(fileOperation.PerformOperations());
                 Marshal.ThrowExceptionForHR(fileOperation.GetAnyOperationsAborted(out bool aborted));
-                if (aborted || Directory.Exists(Extended(directory))) throw new IOException("实例目录未完成回收。");
+                if (aborted) throw new IOException("回收操作已取消。");
+                RequireRecycled(directory);
                 completion.SetResult();
             }
             catch (OperationCanceledException) { completion.TrySetCanceled(token); }
@@ -539,10 +540,18 @@ public sealed class InstanceManager : IInstanceManager
                 if (item is not null) Marshal.FinalReleaseComObject(item);
                 if (operation is not null) Marshal.FinalReleaseComObject(operation);
             }
-        }) { IsBackground = true, Name = "Minecraft instance recycle" };
+        }) { IsBackground = true, Name = "SCI recycle" };
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
         return completion.Task;
+    }
+
+    internal static void RequireRecycled(string path)
+    {
+        try { _ = File.GetAttributes(Extended(path)); }
+        catch (FileNotFoundException) { return; }
+        catch (DirectoryNotFoundException) { return; }
+        throw new IOException("文件或目录未完成回收。");
     }
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = true)]

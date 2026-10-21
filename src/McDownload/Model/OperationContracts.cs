@@ -15,6 +15,16 @@ public enum OperationStage
     Failed
 }
 
+public enum OperationStep
+{
+    Preparing,
+    Client,
+    Libraries,
+    Assets,
+    Loader,
+    Saving
+}
+
 public sealed record OperationProgress(
     Guid OperationId,
     InstanceId InstanceId,
@@ -24,7 +34,8 @@ public sealed record OperationProgress(
     double? StageFraction,
     long DownloadedBytes,
     long? TotalBytes,
-    string? CurrentItem);
+    string? CurrentItem,
+    OperationStep? Step = null);
 
 public sealed record OperationContext(
     Guid OperationId,

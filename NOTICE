@@ -8,3 +8,7 @@ Adapted components include ordered download-source candidates, retries and fallb
 - src/McDownload/Service/HmclFetchTask.cs
 
 SCI is an independent, modified product and is not an official HMCL release. The HMCL-derived portions are distributed under GNU GPL version 3 or later and the additional terms in HMCL-ADDITIONAL-TERMS.md. This program comes with no warranty. See LICENSE for the license text.
+
+SCI modifications, 2026-10-21: ported the adapted download pipeline to C# and integrated it with SCI instance management, loader installation, diagnostic logging and the WPF interface.
+
+CommunityToolkit.Mvvm 8.4.0 is included under the MIT license. Its copyright, license and accompanying third-party notices are retained in THIRD-PARTY-NOTICES.md.
