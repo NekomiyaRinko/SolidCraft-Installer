@@ -19,6 +19,8 @@ public sealed class LoaderInstaller : ILoaderInstaller
     private readonly VersionResolver _versions;
     private readonly HmclFetchTask _fetcher;
     private readonly Action<string>? _log;
+    private readonly Func<string?, int, CancellationToken, Task<string>> _findJava;
+    private readonly Func<string, IEnumerable<string>, string, CancellationToken, Task<string>> _runJava;
     private readonly ConcurrentDictionary<Guid, (LoaderReplacementPlan Plan, DateTimeOffset Expires)> _plans = new();
 
     private readonly record struct ForgePackage(string Installer, JsonObject Install, JsonObject Version,
@@ -29,10 +31,18 @@ public sealed class LoaderInstaller : ILoaderInstaller
         long downloaded = 0, long? total = null);
 
     public LoaderInstaller(InstanceManager instances, VersionResolver versions, HmclFetchTask fetcher, Action<string>? log = null)
+        : this(instances, versions, fetcher, FindJavaAsync, RunJavaAsync, log) { }
+
+    internal LoaderInstaller(InstanceManager instances, VersionResolver versions, HmclFetchTask fetcher,
+        Func<string?, int, CancellationToken, Task<string>> findJava,
+        Func<string, IEnumerable<string>, string, CancellationToken, Task<string>> runJava,
+        Action<string>? log = null)
     {
         _instances = instances ?? throw new ArgumentNullException(nameof(instances));
         _versions = versions ?? throw new ArgumentNullException(nameof(versions));
         _fetcher = fetcher ?? throw new ArgumentNullException(nameof(fetcher));
+        _findJava = findJava ?? throw new ArgumentNullException(nameof(findJava));
+        _runJava = runJava ?? throw new ArgumentNullException(nameof(runJava));
         _log = log;
     }
 
@@ -203,7 +213,6 @@ public sealed class LoaderInstaller : ILoaderInstaller
         var managed = await ReadManagedAsync(metadata, context.CancellationToken);
         var remaining = managed.Patches.Where(x => x.PatchId != metadata.LoaderPatchId).ToArray();
         var effective = _versions.Compose(managed.Base, remaining, metadata.DirectoryName);
-        var published = _versions.ToInherited(managed.Base, effective, VersionResolver.ParentId(metadata));
         var next = metadata with
         {
             InstalledLoader = null,
@@ -213,7 +222,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
         report(OperationStage.Committing);
         // 不删除 mods 目录，不删除任何模组文件或共享库文件。
         return await _instances.CommitLockedAsync(_instances.Paths(metadata).GameDirectory, next,
-            new() { [metadata.DirectoryName + ".json"] = InstanceManager.Serialize(published.Json) }, context.CancellationToken);
+            new() { [metadata.DirectoryName + ".json"] = _versions.SerializeStandalone(effective) }, context.CancellationToken);
     }
 
     private async Task<InstanceMetadata> InstallCoreAsync(InstanceMetadata metadata, LoaderSelection target,
@@ -244,7 +253,6 @@ public sealed class LoaderInstaller : ILoaderInstaller
             var patches = managed.Patches.Append(patch).ToArray();
             var effective = _versions.Compose(managed.Base, patches, metadata.DirectoryName);
             await EnsureLibrariesAsync(effective.Json, work, context.CancellationToken, report);
-            var published = _versions.ToInherited(managed.Base, effective, VersionResolver.ParentId(metadata));
             var next = metadata with
             {
                 InstalledLoader = target,
@@ -256,7 +264,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
             {
                 [".launcher/base.json"] = InstanceManager.Serialize(managed.Base.Json),
                 [$".launcher/patches/{patch.PatchId:N}.json"] = InstanceManager.Serialize(patch),
-                [metadata.DirectoryName + ".json"] = InstanceManager.Serialize(published.Json)
+                [metadata.DirectoryName + ".json"] = _versions.SerializeStandalone(effective)
             }, context.CancellationToken);
         }
         finally
@@ -314,10 +322,12 @@ public sealed class LoaderInstaller : ILoaderInstaller
             (metadata.InstalledLoader is not null && (loaders.Length != 1 || loaders[0].PatchId != metadata.LoaderPatchId ||
                 loaders[0].Loader != metadata.InstalledLoader)))
             throw new LoaderStateException("加载器元数据与 patch 归属不一致。");
-        var expected = _versions.ToInherited(baseVersion, _versions.Compose(baseVersion, patches, metadata.DirectoryName),
-            VersionResolver.ParentId(metadata));
+        var effective = _versions.Compose(baseVersion, patches, metadata.DirectoryName);
+        var expected = _versions.ToInherited(baseVersion, effective, VersionResolver.ParentId(metadata));
+        var standalone = _versions.ToStandalone(effective);
         var current = await InstanceManager.ReadObjectAsync(paths.VersionJsonFile, token);
-        if (!JsonNode.DeepEquals(current, expected.Json)) throw new LoaderStateException("版本 JSON 包含未登记的内容，请先处理受管文件冲突。");
+        if (!JsonNode.DeepEquals(current, expected.Json) && !JsonNode.DeepEquals(current, standalone.Json))
+            throw new LoaderStateException("版本 JSON 包含未登记的内容，请先处理受管文件冲突。");
         return (baseVersion, patches);
     }
 
@@ -356,7 +366,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
                 {
                     int minimum = Math.Max(vanilla.Json["javaVersion"]?["majorVersion"]?.GetValue<int>() ?? 8,
                         profile["javaVersion"]?["majorVersion"]?.GetValue<int>() ?? 8);
-                    java = await FindJavaAsync(javaOverride, minimum, token);
+                    java = await _findJava(javaOverride, minimum, token);
                 }
             }
             return (new(CompatibilityStatus.Compatible, Array.Empty<CompatibilityIssue>()), new(vanilla, profile, forge, java));
@@ -466,7 +476,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
         string localInstaller = InstanceManager.Child(work, "installer.jar");
         await CopyAtomicAsync(package.Installer, localInstaller, token);
         report(OperationStage.InstallingLoader, null, "执行加载器安装器");
-        await RunJavaAsync(java, new[] { "-Djava.awt.headless=true", "-Duser.home=" + InstanceManager.Normal(work),
+        await _runJava(java, new[] { "-Djava.awt.headless=true", "-Duser.home=" + InstanceManager.Normal(work),
             "-jar", InstanceManager.Normal(localInstaller), package.ClientOption!, InstanceManager.Normal(work) }, work, token);
         string id = VersionResolver.Text(package.Version, "id");
         string output = InstanceManager.Child(work, $"versions/{id}/{id}.json");
@@ -474,7 +484,24 @@ public sealed class LoaderInstaller : ILoaderInstaller
         var result = await InstanceManager.ReadObjectAsync(output, token);
         if (VersionResolver.Text(result, "id") != id || result["inheritsFrom"]?.GetValue<string>() != metadata.MinecraftVersionId)
             throw new InvalidDataException("安装产物的版本标识或继承关系不一致。");
+        await EnsureLibrariesAsync(package.Install, work, token, report);
+        await PublishInstallerLibrariesAsync(work, token, report);
         return result;
+    }
+
+    private async Task PublishInstallerLibrariesAsync(string work, CancellationToken token, Reporter report)
+    {
+        string libraries = InstanceManager.Child(work, "libraries");
+        if (!Directory.Exists(InstanceManager.Extended(libraries))) return;
+        InstanceManager.CheckTree(libraries);
+        foreach (string file in Directory.EnumerateFiles(InstanceManager.Extended(libraries), "*", SearchOption.AllDirectories))
+        {
+            token.ThrowIfCancellationRequested();
+            string relative = Path.GetRelativePath(libraries, InstanceManager.Normal(file));
+            string destination = InstanceManager.Child(_instances.MinecraftRoot, "libraries/" + relative);
+            report(OperationStage.InstallingLoader, null, "保存安装产物：" + relative);
+            await PublishLibraryAsync(file, destination, relative, null, token);
+        }
     }
 
     private static async Task ExtractLegacyAsync(ForgePackage package, string work, CancellationToken token)
@@ -544,6 +571,11 @@ public sealed class LoaderInstaller : ILoaderInstaller
                 report(OperationStage.Downloading, null, relative, bytes, total));
         }
         if (sha1 is not null && !await HasSha1Async(source, sha1, token)) throw new DownloadIntegrityException("依赖库摘要不一致：" + relative);
+        await PublishLibraryAsync(source, destination, relative, sha1, token);
+    }
+
+    private async Task PublishLibraryAsync(string source, string destination, string relative, string? sha1, CancellationToken token)
+    {
         if (source.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)) ValidateJar(source);
         await using var lease = await _instances.LockLibrariesAsync(token);
         if (File.Exists(InstanceManager.Extended(destination)))

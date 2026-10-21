@@ -19,8 +19,13 @@ public sealed class InstanceManager : IInstanceManager
     private readonly string _versions;
     private readonly string _locks;
     private readonly TimeSpan _lockTimeout;
+    private readonly Func<string, CancellationToken, Task> _recycle;
 
     public InstanceManager(string minecraftRoot, TimeSpan? lockTimeout = null)
+        : this(minecraftRoot, lockTimeout, RecycleAsync) { }
+
+    internal InstanceManager(string minecraftRoot, TimeSpan? lockTimeout,
+        Func<string, CancellationToken, Task> recycle)
     {
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException();
         _root = Normal(minecraftRoot);
@@ -28,6 +33,7 @@ public sealed class InstanceManager : IInstanceManager
         _locks = Child(_root, ".launcher/locks");
         _lockTimeout = lockTimeout ?? TimeSpan.FromSeconds(30);
         if (_lockTimeout <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(lockTimeout));
+        _recycle = recycle ?? throw new ArgumentNullException(nameof(recycle));
         foreach (string path in new[] { _root, _versions, _locks, Child(_root, "assets"), Child(_root, "libraries") })
             EnsureDirectory(path);
     }
@@ -149,7 +155,7 @@ public sealed class InstanceManager : IInstanceManager
         Trace.TraceWarning(message);
         CheckTree(directory);
         cancellationToken.ThrowIfCancellationRequested();
-        await RecycleAsync(directory, cancellationToken);
+        await _recycle(ShellParsingPath(directory), cancellationToken);
     }
 
     public async Task<InstancePaths> ResolvePathsAsync(InstanceId instanceId, CancellationToken cancellationToken)
@@ -391,6 +397,8 @@ public sealed class InstanceManager : IInstanceManager
         return Path.TrimEndingDirectorySeparator(value);
     }
 
+    internal static string ShellParsingPath(string path) => Normal(path);
+
     internal static string Extended(string path)
     {
         string value = Normal(path);
@@ -516,7 +524,7 @@ public sealed class InstanceManager : IInstanceManager
                 var fileOperation = (IFileOperation)operation;
                 Marshal.ThrowExceptionForHR(fileOperation.SetOperationFlags(0x0004 | 0x0010 | 0x0040 | 0x0400 | 0x00080000 | 0x00100000));
                 Guid iid = typeof(IShellItem).GUID;
-                Marshal.ThrowExceptionForHR(SHCreateItemFromParsingName(Extended(directory), 0, ref iid, out item));
+                Marshal.ThrowExceptionForHR(SHCreateItemFromParsingName(directory, 0, ref iid, out item));
                 Marshal.ThrowExceptionForHR(fileOperation.DeleteItem(item, 0));
                 token.ThrowIfCancellationRequested();
                 Marshal.ThrowExceptionForHR(fileOperation.PerformOperations());

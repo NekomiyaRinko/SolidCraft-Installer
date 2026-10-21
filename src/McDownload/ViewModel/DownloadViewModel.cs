@@ -102,6 +102,7 @@ public partial class DownloadViewModel : ObservableObject
         LoaderSelection? selection;
         try { selection = NewGameLoader.GetSelection(); } catch (Exception ex) { State.ReportError("安装参数无效", ex); return; }
         var version = SelectedMinecraftVersion;
+        string name = ResolveInstanceName(InstanceName, version.Id, selection);
         await State.RunAsync("正在安装 Minecraft…", async context =>
         {
             if (selection is not null)
@@ -109,8 +110,8 @@ public partial class DownloadViewModel : ObservableObject
                 var report = await State.Loaders.ValidateCompatibilityAsync(new(version.Id, selection, _settings.JavaPath), context.CancellationToken);
                 if (report.Status != CompatibilityStatus.Compatible) throw new InvalidOperationException(string.Join("；", report.Issues.Select(x => x.Message)));
             }
-            var metadata = await State.Instances.CreateAsync(new(InstanceName.Trim(), version.Id, IsolationPolicy.PerInstance,
-                new(InstanceName.Trim(), null, string.IsNullOrWhiteSpace(_settings.JavaPath) ? null : _settings.JavaPath)), context.CancellationToken);
+            var metadata = await State.Instances.CreateAsync(new(name, version.Id, IsolationPolicy.PerInstance,
+                new(name, null, string.IsNullOrWhiteSpace(_settings.JavaPath) ? null : _settings.JavaPath)), context.CancellationToken);
             TargetInstance = metadata;
             State.Log("实例已创建：" + metadata.Editable.DisplayName);
             State.Log("未完成的下载可在实例中继续。");
@@ -122,6 +123,10 @@ public partial class DownloadViewModel : ObservableObject
         });
         if (TargetInstance is not null) await RefreshLoaderAsync();
     }
+    internal static string ResolveInstanceName(string? name, string minecraftVersion, LoaderSelection? loader)
+        => !string.IsNullOrWhiteSpace(name) ? name.Trim() : loader is null ? minecraftVersion :
+            $"{minecraftVersion}-{loader.Kind}-{loader.Version}";
+
     [RelayCommand] private async Task ResumeGameAsync()
     {
         if (State.IsBusy || TargetInstance is null) return;

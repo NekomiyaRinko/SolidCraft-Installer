@@ -78,12 +78,11 @@ public sealed class GameDownloadService(InstanceManager instances, VersionResolv
         baseJson["id"] = VersionResolver.ParentId(metadata); baseJson.Remove("inheritsFrom"); baseJson.Remove("jar");
         var baseVersion = new VersionDocument(VersionResolver.ParentId(metadata), baseJson);
         var effective = versions.Compose(baseVersion, Array.Empty<VersionPatch>(), metadata.DirectoryName);
-        var published = versions.ToInherited(baseVersion, effective, VersionResolver.ParentId(metadata));
         Report("正在保存版本信息");
         return await instances.CommitLockedAsync(paths.GameDirectory, metadata, new()
         {
             [".launcher/base.json"] = InstanceManager.Serialize(baseJson),
-            [metadata.DirectoryName + ".json"] = InstanceManager.Serialize(published.Json)
+            [metadata.DirectoryName + ".json"] = versions.SerializeStandalone(effective)
         }, token);
     }
     private async Task FetchAsync(JsonObject descriptor, string path, CancellationToken token)

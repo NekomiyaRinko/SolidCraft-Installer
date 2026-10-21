@@ -196,6 +196,18 @@ public sealed class VersionResolver : IVersionResolver
         return new(outputVersionId, result.Json);
     }
 
+    internal VersionDocument ToStandalone(VersionDocument effective)
+    {
+        ArgumentNullException.ThrowIfNull(effective);
+        var json = (JsonObject)effective.Json.DeepClone();
+        json["id"] = effective.Id;
+        json["jar"] = effective.Id;
+        json.Remove("inheritsFrom");
+        return new(effective.Id, json);
+    }
+
+    internal byte[] SerializeStandalone(VersionDocument effective) => InstanceManager.Serialize(ToStandalone(effective).Json);
+
     // 保存子层差量，继承解析不会重复追加原版参数。
     internal VersionDocument ToInherited(VersionDocument resolvedBase, VersionDocument effective, string parentId)
     {
