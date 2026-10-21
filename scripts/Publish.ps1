@@ -7,13 +7,15 @@ $output = Join-Path $parent 'sci-hmcl'
 $staging = Join-Path $parent ('.sci-hmcl-staging-' + [Guid]::NewGuid().ToString('N'))
 $previous = Join-Path $parent ('.sci-hmcl-previous-' + [Guid]::NewGuid().ToString('N'))
 $project = Join-Path $root 'src\McDownload\McDownload.csproj'
-$newManagedFiles = @('SolidCraft Installer.exe', 'SolidCraft Installer-source.zip', 'LICENSE', 'NOTICE',
+$newManagedFiles = @('SolidCraftInstaller.exe', 'SolidCraftInstaller-source.zip', 'LICENSE', 'NOTICE',
     'HMCL-ADDITIONAL-TERMS.md', 'THIRD-PARTY-NOTICES.md')
-$legacyFiles = @('SCI_HMCL.exe', 'SCI_HMCL-source.zip', 'SCI.exe')
+$legacyFiles = @('SCI_HMCL.exe', 'SCI_HMCL-source.zip', 'SCI.exe', 'SolidCraft Installer.exe',
+    'SolidCraft Installer-source.zip', 'SolidCraft.Installer.exe')
 $managedFiles = @($newManagedFiles + $legacyFiles)
 
 function Assert-PublishDirectory {
-    $running = @(Get-Process -Name SCI, SCI_HMCL, 'SolidCraft Installer' -ErrorAction SilentlyContinue | Where-Object {
+    $running = @(Get-Process -Name SCI, SCI_HMCL, 'SolidCraft Installer', SolidCraftInstaller,
+        'SolidCraft.Installer' -ErrorAction SilentlyContinue | Where-Object {
         $_.Path -and $_.Path.StartsWith($output + '\', [StringComparison]::OrdinalIgnoreCase)
     })
     if ($running.Count) { throw 'Close SCI in the publish directory before replacing the package.' }
@@ -60,8 +62,8 @@ try {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     dotnet publish $project -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o $staging
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed: $LASTEXITCODE" }
-    Move-Item -LiteralPath (Join-Path $staging 'SCI.exe') -Destination (Join-Path $staging 'SolidCraft Installer.exe')
-    $archive = [IO.Compression.ZipFile]::Open((Join-Path $staging 'SolidCraft Installer-source.zip'), [IO.Compression.ZipArchiveMode]::Create)
+    Move-Item -LiteralPath (Join-Path $staging 'SCI.exe') -Destination (Join-Path $staging 'SolidCraftInstaller.exe')
+    $archive = [IO.Compression.ZipFile]::Open((Join-Path $staging 'SolidCraftInstaller-source.zip'), [IO.Compression.ZipArchiveMode]::Create)
     try {
         foreach ($file in ($files | Sort-Object FullName)) {
             $relative = $file.FullName.Substring($root.Length + 1).Replace('\', '/')
@@ -123,5 +125,5 @@ finally {
     }
 }
 
-Get-Item -LiteralPath (Join-Path $output 'SolidCraft Installer.exe'), (Join-Path $output 'SolidCraft Installer-source.zip') |
+Get-Item -LiteralPath (Join-Path $output 'SolidCraftInstaller.exe'), (Join-Path $output 'SolidCraftInstaller-source.zip') |
     Select-Object Name, Length
