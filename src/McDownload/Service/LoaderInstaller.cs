@@ -17,7 +17,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
     private const string ModWarning = "旧加载器下的模组可能不兼容新加载器";
     private readonly InstanceManager _instances;
     private readonly VersionResolver _versions;
-    private readonly HttpClient _http;
+    private readonly HmclFetchTask _fetcher;
     private readonly Action<string>? _log;
     private readonly ConcurrentDictionary<Guid, (LoaderReplacementPlan Plan, DateTimeOffset Expires)> _plans = new();
 
@@ -28,15 +28,14 @@ public sealed class LoaderInstaller : ILoaderInstaller
     private delegate void Reporter(OperationStage stage, double? fraction = null, string? item = null,
         long downloaded = 0, long? total = null);
 
-    public LoaderInstaller(InstanceManager instances, VersionResolver versions, HttpClient http, Action<string>? log = null)
+    public LoaderInstaller(InstanceManager instances, VersionResolver versions, HmclFetchTask fetcher, Action<string>? log = null)
     {
         _instances = instances ?? throw new ArgumentNullException(nameof(instances));
         _versions = versions ?? throw new ArgumentNullException(nameof(versions));
-        _http = http ?? throw new ArgumentNullException(nameof(http));
+        _fetcher = fetcher ?? throw new ArgumentNullException(nameof(fetcher));
         _log = log;
     }
 
-    // 按 PCL 2.14.0.0 默认不提供 Quilt。
     public async Task<LoaderState> GetStateAsync(InstanceId instanceId, CancellationToken cancellationToken)
     {
         string directory = await _instances.FindDirectoryAsync(instanceId, cancellationToken);
@@ -342,7 +341,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
             if (target.Kind == LoaderKind.Fabric)
             {
                 var uri = new Uri($"https://meta.fabricmc.net/v2/versions/loader/{Uri.EscapeDataString(minecraftVersion)}/{Uri.EscapeDataString(target.Version)}/profile/json");
-                profile = VersionResolver.ParseObject(await VersionResolver.HttpBytesAsync(_http, uri, 16 * 1024 * 1024, token));
+                profile = await _fetcher.ReadAsync(uri, 16 * 1024 * 1024, VersionResolver.ParseObject, token);
                 if (VersionResolver.Text(profile, "inheritsFrom") != minecraftVersion)
                     throw new LoaderCompatibilityException("Fabric profile 的 Minecraft 版本不一致。");
                 if (!(profile["libraries"] as JsonArray ?? new()).OfType<JsonObject>()
@@ -555,40 +554,18 @@ public sealed class LoaderInstaller : ILoaderInstaller
         await CopyAtomicAsync(source, destination, token);
     }
 
-    private async Task DownloadAsync(Uri uri, string destination, string? sha1, CancellationToken token, Action<long, long?>? progress)
-    {
-        VersionResolver.RequireHttps(uri);
-        using var response = await _http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, token);
-        response.EnsureSuccessStatusCode();
-        if (response.RequestMessage?.RequestUri is Uri finalUri) VersionResolver.RequireHttps(finalUri);
-        await InstanceManager.AtomicWriteAsync(destination, async (output, ct) =>
-        {
-            await using var input = await response.Content.ReadAsStreamAsync(ct);
-            using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA1);
-            byte[] buffer = new byte[65536];
-            long completed = 0;
-            int count;
-            while ((count = await input.ReadAsync(buffer, ct)) > 0)
-            {
-                completed += count;
-                if (completed > 2L * 1024 * 1024 * 1024) throw new InvalidDataException("下载文件超过大小上限。");
-                hash.AppendData(buffer, 0, count);
-                await output.WriteAsync(buffer.AsMemory(0, count), ct);
-                progress?.Invoke(completed, response.Content.Headers.ContentLength);
-            }
-            if (response.Content.Headers.ContentLength is long length && length != completed)
-                throw new DownloadIntegrityException("下载文件长度不一致。");
-            if (sha1 is not null && !Convert.ToHexString(hash.GetHashAndReset()).Equals(sha1, StringComparison.OrdinalIgnoreCase))
-                throw new DownloadIntegrityException("下载文件 SHA-1 校验失败。");
-        }, token);
-    }
+    private Task DownloadAsync(Uri uri, string destination, string? sha1, CancellationToken token, Action<long, long?>? progress) =>
+        _fetcher.DownloadAsync(uri, destination, sha1, null, token, progress);
 
     private async Task<string> GetSha1Async(Uri uri, CancellationToken token)
     {
-        string text = Encoding.ASCII.GetString(await VersionResolver.HttpBytesAsync(_http, uri, 4096, token)).Trim();
-        string value = text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
-        VersionResolver.ValidateSha1(value);
-        return value.ToLowerInvariant();
+        return await _fetcher.ReadAsync(uri, 4096, bytes =>
+        {
+            string text = Encoding.ASCII.GetString(bytes).Trim();
+            string value = text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+            VersionResolver.ValidateSha1(value);
+            return value.ToLowerInvariant();
+        }, token);
     }
 
     private static async Task<bool> HasSha1Async(string path, string expected, CancellationToken token)

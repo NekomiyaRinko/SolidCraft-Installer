@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/McDownload/McDownload.csproj" />
+  <Project Path="tests/SCI.Smoke/SCI.Smoke.csproj" />
+</Solution>

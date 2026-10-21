@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using McDownload.Model;
@@ -9,16 +8,16 @@ namespace McDownload.Service;
 public sealed class VersionResolver : IVersionResolver
 {
     private readonly InstanceManager _instances;
-    private readonly HttpClient _http;
+    private readonly HmclFetchTask _fetcher;
     private readonly Uri _manifestUri;
     private readonly SemaphoreSlim _manifestGate = new(1, 1);
     private MinecraftVersionManifest? _manifest;
     private DateTimeOffset _manifestTime;
 
-    public VersionResolver(InstanceManager instances, HttpClient http, Uri? manifestUri = null)
+    public VersionResolver(InstanceManager instances, HmclFetchTask fetcher, Uri? manifestUri = null)
     {
         _instances = instances ?? throw new ArgumentNullException(nameof(instances));
-        _http = http ?? throw new ArgumentNullException(nameof(http));
+        _fetcher = fetcher ?? throw new ArgumentNullException(nameof(fetcher));
         _manifestUri = manifestUri ?? new Uri("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json");
         RequireHttps(_manifestUri);
     }
@@ -29,7 +28,18 @@ public sealed class VersionResolver : IVersionResolver
         try
         {
             if (_manifest is not null && DateTimeOffset.UtcNow - _manifestTime < TimeSpan.FromMinutes(5)) return _manifest;
-            var root = ParseObject(await HttpBytesAsync(_http, _manifestUri, 16 * 1024 * 1024, cancellationToken));
+            _manifest = await _fetcher.ReadAsync(_manifestUri, 16 * 1024 * 1024, ParseManifest, cancellationToken);
+            _manifestTime = DateTimeOffset.UtcNow;
+            return _manifest;
+        }
+        finally { _manifestGate.Release(); }
+    }
+
+    private static MinecraftVersionManifest ParseManifest(byte[] bytes)
+    {
+        try
+        {
+            var root = ParseObject(bytes);
             var versions = new List<MinecraftVersionEntry>();
             foreach (JsonNode? entry in root["versions"] as JsonArray ?? throw Error("Manifest", "版本清单缺少 versions。"))
             {
@@ -51,11 +61,13 @@ public sealed class VersionResolver : IVersionResolver
             }
             if (versions.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != versions.Count)
                 throw Error("Manifest", "版本清单包含重复标识。");
-            _manifest = new(Text(root["latest"], "release"), Text(root["latest"], "snapshot"), versions.AsReadOnly());
-            _manifestTime = DateTimeOffset.UtcNow;
-            return _manifest;
+            string release = Text(root["latest"], "release"), snapshot = Text(root["latest"], "snapshot");
+            if (!versions.Any(x => x.Id == release && x.Channel == MinecraftVersionChannel.Release) ||
+                !versions.Any(x => x.Id == snapshot)) throw Error("Manifest", "清单的最新版本引用不存在。");
+            return new(release, snapshot, versions.AsReadOnly());
         }
-        finally { _manifestGate.Release(); }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or FormatException or InstanceValidationException)
+        { throw new VersionResolutionException("版本清单内容不合法。", ex); }
     }
 
     public async Task<VersionDocument> FetchVersionJsonAsync(MinecraftVersionEntry version, CancellationToken cancellationToken)
@@ -66,11 +78,14 @@ public sealed class VersionResolver : IVersionResolver
             ?? throw Error("VersionMissing", "官方版本清单中不存在该版本。");
         if (canonical.JsonUri != version.JsonUri || !canonical.Sha1.Equals(version.Sha1, StringComparison.OrdinalIgnoreCase))
             throw Error("Manifest", "版本地址或摘要与官方清单不一致。");
-        byte[] bytes = await HttpBytesAsync(_http, canonical.JsonUri, 16 * 1024 * 1024, cancellationToken);
-        if (!Convert.ToHexString(SHA1.HashData(bytes)).Equals(canonical.Sha1, StringComparison.OrdinalIgnoreCase))
-            throw new DownloadIntegrityException("版本 JSON 的 SHA-1 校验失败。");
-        var json = ParseObject(bytes);
-        if (Text(json, "id") != canonical.Id) throw Error("VersionId", "版本 JSON 标识不一致。");
+        var json = await _fetcher.ReadAsync(canonical.JsonUri, 16 * 1024 * 1024, bytes =>
+        {
+            if (!Convert.ToHexString(SHA1.HashData(bytes)).Equals(canonical.Sha1, StringComparison.OrdinalIgnoreCase))
+                throw new DownloadIntegrityException("版本 JSON 的 SHA-1 校验失败。");
+            var document = ParseObject(bytes);
+            if (Text(document, "id") != canonical.Id) throw Error("VersionId", "版本 JSON 标识不一致。");
+            return document;
+        }, cancellationToken);
         return new(canonical.Id, json);
     }
 
@@ -309,25 +324,6 @@ public sealed class VersionResolver : IVersionResolver
     {
         if (!uri.IsAbsoluteUri || uri.Scheme != Uri.UriSchemeHttps || !string.IsNullOrEmpty(uri.UserInfo))
             throw new ArgumentException("下载地址必须是无凭证的 HTTPS 地址。");
-    }
-
-    internal static async Task<byte[]> HttpBytesAsync(HttpClient http, Uri uri, int maximum, CancellationToken token)
-    {
-        RequireHttps(uri);
-        using var response = await http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, token);
-        response.EnsureSuccessStatusCode();
-        if (response.RequestMessage?.RequestUri is Uri finalUri) RequireHttps(finalUri);
-        if (response.Content.Headers.ContentLength > maximum) throw new InvalidDataException("响应超过大小上限。");
-        await using var input = await response.Content.ReadAsStreamAsync(token);
-        using var output = new MemoryStream();
-        byte[] buffer = new byte[65536];
-        int count;
-        while ((count = await input.ReadAsync(buffer, token)) > 0)
-        {
-            if (output.Length + count > maximum) throw new InvalidDataException("响应超过大小上限。");
-            output.Write(buffer, 0, count);
-        }
-        return output.ToArray();
     }
 
     private static VersionResolutionException Error(string code, string message)
