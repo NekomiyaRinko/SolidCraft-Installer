@@ -85,12 +85,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests/SCI.Packaging/PublishC
 dotnet run --project tests/SCI.Smoke/SCI.Smoke.csproj -- --online
 ```
 
-Forge 1.21.1 / 52.1.20 安装器 SHA-1 联网检查只读取校验文件；镜像直接成功也会通过。403 回退由离线模拟测试覆盖：
-
-```powershell
-dotnet run --project tests/SCI.Smoke/SCI.Smoke.csproj -- --forge-network
-```
-
 ## 打包
 
 在 Windows 上从待分发版本的源码运行打包脚本，生成 Windows x64 单文件程序及对应源码 ZIP，使用外部 .NET Runtime：
