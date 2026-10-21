@@ -6,12 +6,15 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 $repository = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $fixture = Join-Path ([IO.Path]::GetTempPath()) ('SCI-publish-tests-' + [Guid]::NewGuid().ToString('N'))
 $output = Join-Path $fixture 'artifacts\publish\sci-hmcl'
-$managed = @('SCI_HMCL.exe', 'SCI_HMCL-source.zip', 'LICENSE', 'NOTICE',
+$newManaged = @('SolidCraft Installer.exe', 'SolidCraft Installer-source.zip', 'LICENSE', 'NOTICE',
     'HMCL-ADDITIONAL-TERMS.md', 'THIRD-PARTY-NOTICES.md')
+$newPayload = @('SolidCraft Installer.exe', 'SolidCraft Installer-source.zip')
+$legacy = @('SCI_HMCL.exe', 'SCI_HMCL-source.zip', 'SCI.exe')
+$oldPresent = @($legacy + @('LICENSE', 'NOTICE', 'HMCL-ADDITIONAL-TERMS.md', 'THIRD-PARTY-NOTICES.md'))
 $script:checks = 0
 $global:SCI_PublishTest = @{ Publishes = 0; AddUserData = $false; FailInstall = $false }
 function Check([bool] $condition, [string] $message) {
-    if (-not $condition) { throw $message }
+    if (-not $condition) { throw "CHECK FAILED: $message" }
     $script:checks++
 }
 
@@ -33,7 +36,7 @@ function dotnet {
 function Move-Item {
     [CmdletBinding()]
     param([string] $LiteralPath, [string] $Destination, [switch] $Force)
-    if ($global:SCI_PublishTest.FailInstall -and $Destination -eq (Join-Path $output 'SCI_HMCL-source.zip')) {
+    if ($global:SCI_PublishTest.FailInstall -and $Destination -eq (Join-Path $output 'SolidCraft Installer-source.zip')) {
         throw 'Injected install move failure'
     }
     Microsoft.PowerShell.Management\Move-Item @PSBoundParameters
@@ -48,9 +51,9 @@ try {
     foreach ($name in @('README.md', 'SCI.slnx', 'LICENSE', 'NOTICE', 'HMCL-ADDITIONAL-TERMS.md', 'THIRD-PARTY-NOTICES.md')) {
         [IO.File]::WriteAllText((Join-Path $fixture $name), 'fixture ' + $name)
     }
-    foreach ($name in $managed) { [IO.File]::WriteAllText((Join-Path $output $name), 'old fixture ' + $name) }
+    foreach ($name in $oldPresent) { [IO.File]::WriteAllText((Join-Path $output $name), 'old fixture ' + $name) }
     $before = @{}
-    foreach ($name in $managed) { $before[$name] = (Get-FileHash -LiteralPath (Join-Path $output $name)).Hash }
+    foreach ($name in $oldPresent) { $before[$name] = (Get-FileHash -LiteralPath (Join-Path $output $name)).Hash }
 
     $locked = Join-Path $fixture 'src\McDownload\fixture.cs'
     [IO.File]::WriteAllText($locked, 'source fixture')
@@ -61,7 +64,8 @@ try {
     catch { $failed = $_.InvocationInfo.Line -match 'CreateEntryFromFile'; $failureDetail = $_.ToString() + ' ' + $_.InvocationInfo.Line }
     finally { $lock.Dispose() }
     Check ($failed -and $global:SCI_PublishTest.Publishes -eq 1) ('Locked source must fail at source archiving after the mocked publish completes. ' + $failureDetail)
-    Check (@($managed | Where-Object { (Get-FileHash -LiteralPath (Join-Path $output $_)).Hash -ne $before[$_] }).Count -eq 0) 'Failed source archiving must preserve all old package files.'
+    Check ((@($oldPresent | Where-Object { (Get-FileHash -LiteralPath (Join-Path $output $_)).Hash -ne $before[$_] }).Count -eq 0) -and
+        (@($newPayload | Where-Object { Test-Path -LiteralPath (Join-Path $output $_) }).Count -eq 0)) 'Failed source archiving must preserve the old package and install no new artifacts.'
     Check (@(Get-ChildItem -LiteralPath (Split-Path -Parent $output) -Force | Where-Object { $_.Name -like '.sci-hmcl-*' }).Count -eq 0) 'A failed build must clean its isolated staging directory.'
 
     $global:SCI_PublishTest.FailInstall = $true
@@ -69,29 +73,37 @@ try {
     try { & $publish | Out-Null } catch { $failed = $_.Exception.Message -match 'Injected install move failure' }
     finally { $global:SCI_PublishTest.FailInstall = $false }
     Check $failed 'The install failure injection must reach the file replacement loop.'
-    Check (@($managed | Where-Object { (Get-FileHash -LiteralPath (Join-Path $output $_)).Hash -ne $before[$_] }).Count -eq 0) 'An install move failure must roll back every modified package file.'
+    Check ((@($oldPresent | Where-Object { (Get-FileHash -LiteralPath (Join-Path $output $_)).Hash -ne $before[$_] }).Count -eq 0) -and
+        (@($newPayload | Where-Object { Test-Path -LiteralPath (Join-Path $output $_) }).Count -eq 0)) 'An install move failure must roll back every package artifact.'
 
     Remove-Item -LiteralPath (Join-Path $output 'SCI_HMCL.exe')
+    $before.Remove('SCI_HMCL.exe')
     $global:SCI_PublishTest.FailInstall = $true
     $failed = $false
     try { & $publish | Out-Null } catch { $failed = $_.Exception.Message -match 'Injected install move failure' }
     finally { $global:SCI_PublishTest.FailInstall = $false }
-    Check ($failed -and -not (Test-Path -LiteralPath (Join-Path $output 'SCI_HMCL.exe'))) 'Rollback must remove newly installed files that were absent from the old package.'
-    Check (@($managed | Where-Object { $_ -ne 'SCI_HMCL.exe' -and (Get-FileHash -LiteralPath (Join-Path $output $_)).Hash -ne $before[$_] }).Count -eq 0) 'Rollback must also restore an incomplete old package.'
+    Check ($failed -and -not (Test-Path -LiteralPath (Join-Path $output 'SolidCraft Installer.exe')) -and
+        -not (Test-Path -LiteralPath (Join-Path $output 'SCI_HMCL.exe'))) 'Rollback must remove newly installed files and not recreate a missing old file.'
+    Check ((@($before.Keys | Where-Object { (Get-FileHash -LiteralPath (Join-Path $output $_)).Hash -ne $before[$_] }).Count -eq 0) -and
+        (@($newPayload | Where-Object { Test-Path -LiteralPath (Join-Path $output $_) }).Count -eq 0)) 'Rollback must restore the other files in an incomplete old package.'
     [IO.File]::WriteAllText((Join-Path $output 'SCI_HMCL.exe'), 'old fixture SCI_HMCL.exe')
+    $before['SCI_HMCL.exe'] = (Get-FileHash -LiteralPath (Join-Path $output 'SCI_HMCL.exe')).Hash
 
     $global:SCI_PublishTest.AddUserData = $true
     $failed = $false
     try { & $publish | Out-Null } catch { $failed = $true }
     finally { $global:SCI_PublishTest.AddUserData = $false }
     Check ($failed -and [IO.File]::ReadAllText((Join-Path $output '.minecraft\keep.txt')) -eq 'game data fixture') 'User data appearing during publish must survive and stop installation.'
-    Check (@($managed | Where-Object { (Get-FileHash -LiteralPath (Join-Path $output $_)).Hash -ne $before[$_] }).Count -eq 0) 'User data appearing during publish must leave every old package file unchanged.'
+    Check ((@($before.Keys | Where-Object { (Get-FileHash -LiteralPath (Join-Path $output $_)).Hash -ne $before[$_] }).Count -eq 0) -and
+        (@($newPayload | Where-Object { Test-Path -LiteralPath (Join-Path $output $_) }).Count -eq 0)) 'User data appearing during publish must leave every old package file unchanged.'
     Remove-Item -LiteralPath (Join-Path $output '.minecraft\keep.txt')
     Remove-Item -LiteralPath (Join-Path $output '.minecraft')
 
     & $publish | Out-Null
-    Check ([IO.File]::ReadAllText((Join-Path $output 'SCI_HMCL.exe')) -eq 'new executable fixture') 'Successful publication must install the new executable.'
-    $archive = [IO.Compression.ZipFile]::OpenRead((Join-Path $output 'SCI_HMCL-source.zip'))
+    Check ([IO.File]::ReadAllText((Join-Path $output 'SolidCraft Installer.exe')) -eq 'new executable fixture') 'Successful publication must install the renamed executable.'
+    Check (@($legacy | Where-Object { Test-Path -LiteralPath (Join-Path $output $_) }).Count -eq 0) 'Successful publication must remove all legacy executable and archive names.'
+    Check (@((Get-ChildItem -LiteralPath $output -File).Name | Where-Object { $_ -notin $newManaged }).Count -eq 0) 'Successful publication must leave only the six new managed package files.'
+    $archive = [IO.Compression.ZipFile]::OpenRead((Join-Path $output 'SolidCraft Installer-source.zip'))
     try {
         Check ($null -ne $archive.GetEntry('scripts/Publish.ps1') -and $null -ne $archive.GetEntry('src/McDownload/fixture.cs')) 'Successful publication must include matching source and build materials.'
         foreach ($name in @('scripts/Publish.ps1', 'src/McDownload/fixture.cs')) {

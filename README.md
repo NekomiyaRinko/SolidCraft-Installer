@@ -91,8 +91,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Publish.ps1
 
 执行策略参数仅作用于此次打包进程。输出目录固定为 `artifacts/publish/sci-hmcl/`，重复运行会覆盖旧包，运行前请关闭该目录中的 SCI 并备份需保留的旧版本。整包先在暂存目录生成，再替换包内文件，替换失败时恢复旧文件；用户数据不参与替换。脚本阻止同时打包，并在构建前后检查 `.minecraft` 等用户文件，发现后停止覆盖。目录包含：
 
-- `SCI_HMCL.exe`：依赖 .NET 10 Windows Desktop Runtime（x64），不捆绑运行时。
-- `SCI_HMCL-source.zip`：本次构建的项目、测试、打包脚本、README 和许可证；排除 `bin/obj`、日志及用户错误报告。
+- `SolidCraft Installer.exe`：依赖 .NET 10 Windows Desktop Runtime（x64），不捆绑运行时。
+- `SolidCraft Installer-source.zip`：本次构建的项目、测试、打包脚本、README 和许可证；排除 `bin/obj`、日志及用户错误报告。
 - `LICENSE`、`NOTICE`、`HMCL-ADDITIONAL-TERMS.md`、`THIRD-PARTY-NOTICES.md`：许可证、来源及第三方声明。
 
 分发时保留这些文件，并提供与二进制对应的完整源码及构建材料。

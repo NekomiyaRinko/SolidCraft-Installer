@@ -7,11 +7,13 @@ $output = Join-Path $parent 'sci-hmcl'
 $staging = Join-Path $parent ('.sci-hmcl-staging-' + [Guid]::NewGuid().ToString('N'))
 $previous = Join-Path $parent ('.sci-hmcl-previous-' + [Guid]::NewGuid().ToString('N'))
 $project = Join-Path $root 'src\McDownload\McDownload.csproj'
-$managedFiles = @('SCI_HMCL.exe', 'SCI_HMCL-source.zip', 'LICENSE', 'NOTICE',
+$newManagedFiles = @('SolidCraft Installer.exe', 'SolidCraft Installer-source.zip', 'LICENSE', 'NOTICE',
     'HMCL-ADDITIONAL-TERMS.md', 'THIRD-PARTY-NOTICES.md')
+$legacyFiles = @('SCI_HMCL.exe', 'SCI_HMCL-source.zip', 'SCI.exe')
+$managedFiles = @($newManagedFiles + $legacyFiles)
 
 function Assert-PublishDirectory {
-    $running = @(Get-Process -Name SCI, SCI_HMCL -ErrorAction SilentlyContinue | Where-Object {
+    $running = @(Get-Process -Name SCI, SCI_HMCL, 'SolidCraft Installer' -ErrorAction SilentlyContinue | Where-Object {
         $_.Path -and $_.Path.StartsWith($output + '\', [StringComparison]::OrdinalIgnoreCase)
     })
     if ($running.Count) { throw 'Close SCI in the publish directory before replacing the package.' }
@@ -58,8 +60,8 @@ try {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     dotnet publish $project -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o $staging
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed: $LASTEXITCODE" }
-    Move-Item -LiteralPath (Join-Path $staging 'SCI.exe') -Destination (Join-Path $staging 'SCI_HMCL.exe')
-    $archive = [IO.Compression.ZipFile]::Open((Join-Path $staging 'SCI_HMCL-source.zip'), [IO.Compression.ZipArchiveMode]::Create)
+    Move-Item -LiteralPath (Join-Path $staging 'SCI.exe') -Destination (Join-Path $staging 'SolidCraft Installer.exe')
+    $archive = [IO.Compression.ZipFile]::Open((Join-Path $staging 'SolidCraft Installer-source.zip'), [IO.Compression.ZipArchiveMode]::Create)
     try {
         foreach ($file in ($files | Sort-Object FullName)) {
             $relative = $file.FullName.Substring($root.Length + 1).Replace('\', '/')
@@ -68,12 +70,12 @@ try {
         }
     }
     finally { $archive.Dispose() }
-    foreach ($name in $managedFiles) {
+    foreach ($name in $newManagedFiles) {
         if (-not (Test-Path -LiteralPath (Join-Path $staging $name) -PathType Leaf)) {
             throw "Incomplete publish bundle: $name"
         }
     }
-    if (@(Get-ChildItem -LiteralPath $staging -Force | Where-Object { $_.PSIsContainer -or $_.Name -notin $managedFiles }).Count) {
+    if (@(Get-ChildItem -LiteralPath $staging -Force | Where-Object { $_.PSIsContainer -or $_.Name -notin $newManagedFiles }).Count) {
         throw 'Unexpected entries in the staged publish bundle.'
     }
     Assert-PublishDirectory
@@ -85,9 +87,16 @@ try {
     }
     $changed = [Collections.Generic.List[string]]::new()
     try {
-        foreach ($name in $managedFiles) {
+        foreach ($name in $newManagedFiles) {
             $changed.Add($name)
             Move-Item -LiteralPath (Join-Path $staging $name) -Destination (Join-Path $output $name) -Force
+        }
+        foreach ($name in $legacyFiles) {
+            $legacyPath = Join-Path $output $name
+            if (Test-Path -LiteralPath $legacyPath) {
+                $changed.Add($name)
+                Remove-Item -LiteralPath $legacyPath -Force
+            }
         }
     }
     catch {
@@ -114,5 +123,5 @@ finally {
     }
 }
 
-Get-Item -LiteralPath (Join-Path $output 'SCI_HMCL.exe'), (Join-Path $output 'SCI_HMCL-source.zip') |
+Get-Item -LiteralPath (Join-Path $output 'SolidCraft Installer.exe'), (Join-Path $output 'SolidCraft Installer-source.zip') |
     Select-Object Name, Length
