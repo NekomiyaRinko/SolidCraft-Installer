@@ -8,6 +8,8 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>SCI</AssemblyName>
     <Product>SolidCraft Installer</Product>
+    <Version>0.4.1</Version>
+    <InformationalVersion>0.4.1a</InformationalVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
@@ -17,5 +19,11 @@
     <None Include="..\..\NOTICE" Link="NOTICE" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="..\..\HMCL-ADDITIONAL-TERMS.md" Link="HMCL-ADDITIONAL-TERMS.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="..\..\THIRD-PARTY-NOTICES.md" Link="THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\LICENSE" LogicalName="McDownload.Licenses.LICENSE" />
+    <EmbeddedResource Include="..\..\HMCL-ADDITIONAL-TERMS.md" LogicalName="McDownload.Licenses.HMCL-ADDITIONAL-TERMS.md" />
+    <EmbeddedResource Include="..\..\NOTICE" LogicalName="McDownload.Licenses.NOTICE" />
+    <EmbeddedResource Include="..\..\THIRD-PARTY-NOTICES.md" LogicalName="McDownload.Licenses.THIRD-PARTY-NOTICES.md" />
   </ItemGroup>
 </Project>

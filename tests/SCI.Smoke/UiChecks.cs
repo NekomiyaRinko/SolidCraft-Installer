@@ -66,7 +66,7 @@ internal static class UiChecks
         check(!details.IsVisible && detailColumn.ActualWidth == 0, "details also disappear when selection is cleared in a nonempty list");
         model.Instances.SelectedInstance = model.Instances.Instances.First();
 
-        foreach (string page in new[] { "Instances", "Download", "Settings", "Loaders" })
+        foreach (string page in new[] { "Instances", "Download", "Settings", "Loaders", "About", "Licenses", "ProjectLicense" })
         {
             model.CurrentPage = page;
             model.OpenTasksCommand.Execute(null);

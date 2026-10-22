@@ -164,13 +164,14 @@ internal static class ColorStateChecks
         try
         {
             var navigation = Find<Button>(owner).Where(x => x.Style == owner.FindResource("NavigationButton")).ToArray();
-            foreach (string page in new[] { "Instances", "Download", "Settings", "Loaders", "Tasks" })
+            foreach (string page in new[] { "Instances", "Download", "Settings", "Loaders", "Tasks", "About", "Licenses", "ProjectLicense" })
             {
                 model.CurrentPage = page;
                 await owner.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
                 owner.UpdateLayout();
                 var selected = navigation.Where(x => x.Tag is true).ToArray();
-                check(selected.Length == 1 && Equals(selected[0].CommandParameter, page == "Loaders" ? "Instances" : page) &&
+                string expectedPage = page == "Loaders" ? "Instances" : page is "Licenses" or "ProjectLicense" ? "About" : page;
+                check(selected.Length == 1 && Equals(selected[0].CommandParameter, expectedPage) &&
                     Is(selected[0].Background, "#1976D2") && Is(selected[0].Foreground, "#FFFFFF"), "exactly one navigation entry identifies page " + page);
                 var current = selected[0];
                 try

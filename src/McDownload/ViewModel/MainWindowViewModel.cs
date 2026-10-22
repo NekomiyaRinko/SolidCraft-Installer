@@ -9,6 +9,10 @@ public partial class MainWindowViewModel : ObservableObject
     public SettingsViewModel Settings { get; }
     public DownloadViewModel Download { get; }
     public InstanceListViewModel Instances { get; }
+    public LicenseViewModel Licenses { get; } = new();
+    public string ProductVersion => typeof(MainWindowViewModel).Assembly
+        .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+        .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().Single().InformationalVersion.Split('+')[0];
     private readonly List<Task> _backgroundRefreshes = new();
     private string _taskReturnPage = "Instances";
     public Task BackgroundRefresh => Task.WhenAll(_backgroundRefreshes);

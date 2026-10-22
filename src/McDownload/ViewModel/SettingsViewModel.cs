@@ -164,17 +164,6 @@ public partial class SettingsViewModel : ObservableObject
         catch (Exception ex) { LogMessage = "日志清理未完成：" + Service.DiagnosticText.Summary(ex); _state.LogException("日志清理失败", ex); }
         finally { IsManagingLogs = false; }
     }
-    [RelayCommand] private void OpenLicenseFiles()
-    {
-        try
-        {
-            string directory = AppContext.BaseDirectory;
-            if (!File.Exists(Path.Combine(directory, "LICENSE")))
-                throw new FileNotFoundException("许可证文件未随程序附带。", Path.Combine(directory, "LICENSE"));
-            Process.Start(new ProcessStartInfo("explorer.exe") { UseShellExecute = true, ArgumentList = { directory } });
-        }
-        catch (Exception ex) { _state.ReportError("许可证文件夹打开失败", ex); }
-    }
     [RelayCommand] private void BrowseRoot()
     {
         var dialog = new OpenFolderDialog { Title = "选择 Minecraft 目录" };

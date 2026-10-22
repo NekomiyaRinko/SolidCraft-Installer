@@ -72,7 +72,7 @@ internal static class Program
                 await ColorStateChecks.RunAsync(window, model, Check, Capture);
                 await QueueChecks.RunAsync(window, model, root, handler, Check, Capture);
                 await SettingsStyleChecks.RunAsync(window, root, handler, Check, Capture);
-                foreach (string page in new[] { "Instances", "Download", "Settings", "Loaders", "Tasks" })
+                foreach (string page in new[] { "Instances", "Download", "Settings", "Loaders", "Tasks", "About", "Licenses", "ProjectLicense" })
                 {
                     model.CurrentPage = page; window.UpdateLayout();
                     Check(Find<UserControl>(window).Count(x => x.IsVisible && x is not LoaderVersionSelector) == 1, "single page " + page);
@@ -125,14 +125,20 @@ internal static class Program
                 await DiagnosticChecks.RunAsync(model.State, root, Check);
                 model.CurrentPage = "Settings"; window.UpdateLayout();
                 Check(Find<Button>(window).Any(x => x.IsVisible && Equals(x.Content, "打开日志文件夹")), "diagnostic log action visible");
-                Check(Find<TextBlock>(window).Any(x => x.IsVisible && x.Text.Contains("Copyright © 2020–2026 huangyuhui")), "HMCL copyright and license notice visible");
-                Check(Find<Button>(window).Any(x => x.IsVisible && Equals(x.Content, "打开许可证文件夹")), "license files action visible");
+                model.CurrentPage = "About"; window.UpdateLayout();
+                Check(Find<TextBlock>(window).Any(x => x.IsVisible && x.Text.Contains("2020–2026 huangyuhui")), "HMCL copyright and license notice visible");
+                Check(Find<Button>(window).Any(x => x.IsVisible && Equals(x.Content, "开放源代码许可")), "embedded open source licenses action visible");
+                Check(model.Licenses.Documents.Select(x => x.FileName).SequenceEqual(new[]
+                    { "LICENSE", "HMCL-ADDITIONAL-TERMS.md", "NOTICE", "THIRD-PARTY-NOTICES.md" }) &&
+                    model.Licenses.Documents.All(x => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, x.FileName)) == x.Content),
+                    "license texts are embedded in the application assembly in project order and match the source files");
+                await LicenseChecks.RunAsync(window, model, Check, Capture);
                 string thirdPartyNotices = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "THIRD-PARTY-NOTICES.md"));
                 Check(thirdPartyNotices.Contains("CommunityToolkit.Mvvm 8.4.0") && thirdPartyNotices.Contains("Copyright © .NET Foundation and Contributors"),
                     "MVVM dependency copyright notice is distributed with the application");
                 Check(thirdPartyNotices.Contains("The above copyright notice and this permission notice") && thirdPartyNotices.Contains("THE SOFTWARE IS PROVIDED"),
                     "MVVM dependency MIT permission and warranty text are distributed intact");
-                Capture("SCI-settings");
+                model.CurrentPage = "Settings"; Capture("SCI-settings");
                 model.CurrentPage = "Instances";
                 await model.Download.SelectInstanceAsync(instance);
                 model.CurrentPage = "Instances"; Capture("SCI-instances");

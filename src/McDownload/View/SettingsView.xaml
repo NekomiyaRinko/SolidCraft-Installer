@@ -5,7 +5,7 @@
     </StackPanel></Border>
     <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="下载源" FontSize="17" FontWeight="SemiBold"/>
         <ComboBox x:Name="DownloadSourceCombo" ItemsSource="{Binding DownloadSources}" SelectedItem="{Binding SelectedDownloadSource}" Margin="0,12,0,0"/>
-        <TextBlock Text="BMCLAPI 提供镜像加速。镜像超时、请求失败或摘要不一致时回退官方源。" Style="{StaticResource Label}" TextWrapping="Wrap"/>
+        <TextBlock Text="BMCLAPI（https://bmclapi2.bangbang93.com）是可选的 Minecraft 资源下载镜像源，由 bangbang93 开发并维护。镜像超时、请求失败或摘要不一致时回退官方源。&#x0a;&#x0a;BMCLAPI 下的文件归源站点所有，SCI 不对其完整性、有效性或实时性作出保证。" Style="{StaticResource Label}" TextWrapping="Wrap"/>
     </StackPanel></Border>
     <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="游戏目录" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="Minecraft 根目录" Style="{StaticResource Label}"/><DockPanel><Button x:Name="RootBrowseButton" Content="浏览" DockPanel.Dock="Right" Command="{Binding BrowseRootCommand}" Style="{StaticResource RowButton}"/><TextBox x:Name="MinecraftRootInput" Text="{Binding MinecraftRoot, UpdateSourceTrigger=LostFocus}"/></DockPanel>
         <Button Content="使用程序目录下的 .minecraft" Command="{Binding UseDefaultRootCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
@@ -22,12 +22,6 @@
             <Button x:Name="LogDeleteButton" Content="删除日志" Command="{Binding RequestDeleteLogsCommand}" Style="{StaticResource Danger}"/>
         </WrapPanel>
         <TextBlock Text="{Binding LogMessage}" TextWrapping="Wrap" Foreground="#65758A" Margin="0,8,0,0"/>
-    </StackPanel></Border>
-    <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="关于与许可证" FontSize="17" FontWeight="SemiBold"/>
-        <TextBlock Text="SCI 使用基于 HMCL 修改的下载组件；SCI 是独立修改版本，非 HMCL 官方版本。" Style="{StaticResource Label}" TextWrapping="Wrap"/>
-        <TextBlock Text="Copyright © 2020–2026 huangyuhui and HMCL contributors." Style="{StaticResource Label}" TextWrapping="Wrap"/>
-        <TextBlock Text="本程序按 GNU GPL v3 或更高版本发布，不提供担保；接收者可依许可证复制、修改和分发。完整许可证、来源声明与附加条款随程序附带。" Style="{StaticResource Label}" TextWrapping="Wrap"/>
-        <Button Content="打开许可证文件夹" Command="{Binding OpenLicenseFilesCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
     </StackPanel></Border>
     </StackPanel></ScrollViewer>
 </UserControl>
