@@ -15,6 +15,10 @@ public partial class DownloadViewModel : ObservableObject
     [ObservableProperty] private string selectedMinecraftChannel = "正式版";
     public LoaderSelectionViewModel NewGameLoader { get; }
     public LoaderSelectionViewModel InstanceLoader { get; }
+    public ModpackImportViewModel Modpacks { get; }
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsMinecraftTab), nameof(IsPageBusy), nameof(IsPageInteractive))]
+    private bool isModpackTab;
+    public bool IsMinecraftTab => !IsModpackTab;
     [ObservableProperty] private MinecraftVersionEntry? selectedMinecraftVersion;
     [ObservableProperty] private string instanceName = "";
     [ObservableProperty]
@@ -23,7 +27,7 @@ public partial class DownloadViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsPageBusy), nameof(IsPageInteractive), nameof(PageBusyMessage))]
     private bool isSubmittingGame;
-    public bool IsPageBusy => IsRefreshingVersions || NewGameLoader.IsLoading || IsSubmittingGame;
+    public bool IsPageBusy => !IsModpackTab && (IsRefreshingVersions || NewGameLoader.IsLoading || IsSubmittingGame);
     public bool IsPageInteractive => !IsPageBusy;
     public string PageBusyMessage => IsSubmittingGame ? "正在添加下载任务…" : "正在加载版本列表…";
     internal Task SubmissionFeedback { get; private set; } = Task.CompletedTask;
@@ -39,6 +43,7 @@ public partial class DownloadViewModel : ObservableObject
     public DownloadViewModel(WorkspaceViewModel state, SettingsViewModel settings)
     {
         State = state; _settings = settings;
+        Modpacks = new(state, settings);
         NewGameLoader = new(state); InstanceLoader = new(state);
         NewGameLoader.PropertyChanged += (_, args) =>
         {
@@ -55,6 +60,12 @@ public partial class DownloadViewModel : ObservableObject
             TargetInstance = null; _allMinecraftVersions = Array.Empty<MinecraftVersionEntry>();
             MinecraftVersions.Clear(); SelectedMinecraftVersion = null;
         };
+    }
+    [RelayCommand] private void SelectModpackTab() => IsModpackTab = true;
+    [RelayCommand] private async Task SelectMinecraftTabAsync()
+    {
+        IsModpackTab = false;
+        if (MinecraftVersions.Count == 0) await RefreshVersionsAsync();
     }
     partial void OnSelectedMinecraftVersionChanged(MinecraftVersionEntry? value) => NewGameLoader.MinecraftVersion = value?.Id ?? "";
     partial void OnSelectedMinecraftChannelChanged(string value) => ApplyMinecraftFilter();

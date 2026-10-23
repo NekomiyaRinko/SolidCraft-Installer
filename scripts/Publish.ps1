@@ -53,7 +53,7 @@ try {
         if (Test-Path -LiteralPath $path -PathType Leaf) { $files += Get-Item -LiteralPath $path }
     }
     foreach ($file in $files) {
-        if ($file.Name -match '^\.env($|\.)|\.(pfx|p12|key)$' -or
+        if ($file.Name -match '^\.env($|\.)|\.(pfx|p12|key|dpapi)$' -or
             ($file.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
             throw "Unexpected source archive input: $($file.FullName)"
         }

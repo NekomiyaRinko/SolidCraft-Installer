@@ -9,6 +9,7 @@ public partial class MainWindowViewModel : ObservableObject
     public SettingsViewModel Settings { get; }
     public DownloadViewModel Download { get; }
     public InstanceListViewModel Instances { get; }
+    public ModpackResumeViewModel ModpackResume { get; }
     public LicenseViewModel Licenses { get; } = new();
     public string ProductVersion => typeof(MainWindowViewModel).Assembly
         .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
@@ -17,13 +18,19 @@ public partial class MainWindowViewModel : ObservableObject
     private string _taskReturnPage = "Instances";
     public Task BackgroundRefresh => Task.WhenAll(_backgroundRefreshes);
     [ObservableProperty] private string currentPage = "Instances";
-    public MainWindowViewModel(HttpClient? http = null, string? settingsFile = null, Service.DiagnosticLog? diagnostics = null)
+    public MainWindowViewModel(HttpClient? http = null, string? settingsFile = null, Service.DiagnosticLog? diagnostics = null,
+        Action<string>? openExternal = null, System.Net.Http.HttpMessageHandler? curseForgeHandler = null)
     {
-        State = new(http, diagnostics);
-        Settings = new(State, settingsFile); Download = new(State, Settings);
+        State = new(http, diagnostics, curseForgeHandler: curseForgeHandler);
+        Settings = new(State, settingsFile, openExternal); Download = new(State, Settings);
+        ModpackResume = new(State);
         Instances = new(State, async metadata =>
         {
             await Download.SelectInstanceAsync(metadata); CurrentPage = "Loaders";
+        }, async metadata =>
+        {
+            CurrentPage = "ModpackResume";
+            await ModpackResume.LoadAsync(metadata);
         });
         State.Changed += (_, _) =>
         {
@@ -44,6 +51,14 @@ public partial class MainWindowViewModel : ObservableObject
     {
         CurrentPage = page;
         if (page == "Instances") await Instances.RefreshAsync();
-        if (page == "Download" && Download.MinecraftVersions.Count == 0) await Download.RefreshVersionsAsync();
+        if (page == "Download" && !Download.IsModpackTab && Download.MinecraftVersions.Count == 0) await Download.RefreshVersionsAsync();
+    }
+    public bool CanDropModpack => !Instances.IsDeleteConfirmationVisible && !Settings.IsLogDeleteConfirmationVisible &&
+        !Download.IsLoaderConfirmationVisible && !Settings.IsExternalLinkConfirmationVisible;
+    public async Task ImportDroppedFilesAsync(IReadOnlyList<string> paths)
+    {
+        if (!CanDropModpack) return;
+        CurrentPage = "Download"; Download.IsModpackTab = true;
+        await Download.Modpacks.LoadFilesAsync(paths);
     }
 }

@@ -9,5 +9,6 @@
 *.pfx
 *.p12
 *.key
+*.dpapi
 TestResults/
 artifacts/

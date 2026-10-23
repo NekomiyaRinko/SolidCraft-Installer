@@ -12,6 +12,14 @@ public partial class SettingsViewModel : ObservableObject
 {
     private readonly WorkspaceViewModel _state;
     private readonly string _filePath;
+    private readonly Service.CurseForgeCredentialStore _credentials;
+    private readonly Action<string> _openExternal;
+    public const string CurseForgeConsoleUrl = "https://console.curseforge.com/";
+    [ObservableProperty] private bool isExternalLinkConfirmationVisible;
+    [ObservableProperty] private bool rememberCurseForgeKey;
+    [ObservableProperty] private bool isUpdatingCurseForgeKey;
+    [ObservableProperty] private string curseForgeMessage = "未配置。CurseForge 整合包需要有效的应用 API key。";
+    public bool CanEditCurseForgeKey => !_state.IsBusy && !IsUpdatingCurseForgeKey;
     private bool _autoSaveEnabled;
     private long _saveVersion;
     private int _pendingSaves;
@@ -33,15 +41,54 @@ public partial class SettingsViewModel : ObservableObject
     public string DiagnosticDirectory => _state.DiagnosticDirectory;
     public string? DiagnosticLogPath => _state.DiagnosticLogPath;
     public WorkspaceViewModel State => _state;
-    public SettingsViewModel(WorkspaceViewModel state, string? filePath = null)
+    public SettingsViewModel(WorkspaceViewModel state, string? filePath = null, Action<string>? openExternal = null)
     {
         _state = state;
+        _openExternal = openExternal ?? (url => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }));
         _filePath = filePath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SCI", "settings.json");
+        _credentials = new(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(_filePath))!, "curseforge-key.dpapi"));
         _state.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(WorkspaceViewModel.DiagnosticLogPath))
             { OnPropertyChanged(nameof(DiagnosticLogPath)); OnPropertyChanged(nameof(DiagnosticDirectory)); }
+            if (args.PropertyName == nameof(WorkspaceViewModel.IsBusy)) OnPropertyChanged(nameof(CanEditCurseForgeKey));
         };
+    }
+    public void ConfirmOpenCurseForgeConsole()
+    {
+        if (!IsExternalLinkConfirmationVisible) return;
+        IsExternalLinkConfirmationVisible = false;
+        try { _openExternal(CurseForgeConsoleUrl); }
+        catch (Exception) { CurseForgeMessage = "无法打开默认浏览器，请手动访问 https://console.curseforge.com/。"; }
+    }
+    partial void OnIsUpdatingCurseForgeKeyChanged(bool value) => OnPropertyChanged(nameof(CanEditCurseForgeKey));
+    public async Task ApplyCurseForgeKeyAsync(string key)
+    {
+        if (!CanEditCurseForgeKey) return;
+        IsUpdatingCurseForgeKey = true; _state.IsUpdatingCredentials = true;
+        try
+        {
+            key = Service.CurseForgeCredentialStore.Validate(key);
+            if (RememberCurseForgeKey) await _credentials.SaveAsync(key);
+            else _credentials.Clear();
+            _state.SetCurseForgeApiKey(key);
+            CurseForgeMessage = RememberCurseForgeKey ? "已加密保存，仅当前 Windows 用户可读取。" : "已配置，仅本次运行有效。";
+        }
+        catch (ArgumentException) { CurseForgeMessage = "请输入有效的应用 API key，不要包含空格或换行。"; }
+        catch (Exception) { CurseForgeMessage = "凭据应用失败，请检查本地凭据文件访问权限后重试。"; }
+        finally { IsUpdatingCurseForgeKey = false; _state.IsUpdatingCredentials = false; }
+    }
+    [RelayCommand] private void ClearCurseForgeKey()
+    {
+        if (!CanEditCurseForgeKey) return;
+        try
+        {
+            _credentials.Clear();
+            _state.SetCurseForgeApiKey(null);
+            RememberCurseForgeKey = false;
+            CurseForgeMessage = "已清除内存和本地保存的 API key。";
+        }
+        catch (Exception) { CurseForgeMessage = "本地凭据清除失败，请检查文件访问权限后重试。"; }
     }
     private DownloadSource Source => SelectedDownloadSource == "官方" ? DownloadSource.Official : DownloadSource.Bmclapi;
     public static string ResolveMinecraftRoot(IReadOnlyDictionary<string, string> settings)
@@ -60,6 +107,16 @@ public partial class SettingsViewModel : ObservableObject
     private void AutoSave() { if (_autoSaveEnabled) _ = SaveAsync(); }
     public async Task LoadAsync()
     {
+        try
+        {
+            var key = await _credentials.LoadAsync();
+            if (key is not null)
+            {
+                _state.SetCurseForgeApiKey(key); RememberCurseForgeKey = true;
+                CurseForgeMessage = "已读取本地加密凭据。";
+            }
+        }
+        catch (Exception) { CurseForgeMessage = "本地凭据无法解密或读取，请重新输入并应用 API key，或清除保存项。"; }
         if (File.Exists(Service.InstanceManager.Extended(_filePath)))
         {
             try

@@ -22,7 +22,9 @@ public enum OperationStep
     Libraries,
     Assets,
     Loader,
-    Saving
+    Saving,
+    ModpackFiles,
+    Overrides
 }
 
 public sealed record OperationProgress(

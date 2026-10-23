@@ -20,7 +20,7 @@ public partial class App : Application
         window.Closing += (_, args) =>
         {
             window.CommitSettingsInput();
-            if (!model.State.IsBusy && !model.Settings.IsSaving && !model.Settings.IsManagingLogs) return;
+            if (!model.State.IsBusy && !model.Settings.IsSaving && !model.Settings.IsManagingLogs && !model.Settings.IsUpdatingCurseForgeKey) return;
             args.Cancel = true;
             closeAfterCancellation = true;
             model.State.StopQueue();
@@ -28,13 +28,13 @@ public partial class App : Application
         model.State.PropertyChanged += (_, args) =>
         {
             if (closeAfterCancellation && args.PropertyName == nameof(model.State.IsBusy) &&
-                !model.State.IsBusy && !model.Settings.IsSaving && !model.Settings.IsManagingLogs)
+                 !model.State.IsBusy && !model.Settings.IsSaving && !model.Settings.IsManagingLogs && !model.Settings.IsUpdatingCurseForgeKey)
                 Dispatcher.BeginInvoke(() => window.Close());
         };
         model.Settings.PropertyChanged += (_, args) =>
         {
-            if (closeAfterCancellation && args.PropertyName is nameof(model.Settings.IsSaving) or nameof(model.Settings.IsManagingLogs) &&
-                !model.State.IsBusy && !model.Settings.IsSaving && !model.Settings.IsManagingLogs)
+            if (closeAfterCancellation && args.PropertyName is nameof(model.Settings.IsSaving) or nameof(model.Settings.IsManagingLogs) or nameof(model.Settings.IsUpdatingCurseForgeKey) &&
+                 !model.State.IsBusy && !model.Settings.IsSaving && !model.Settings.IsManagingLogs && !model.Settings.IsUpdatingCurseForgeKey)
                 Dispatcher.BeginInvoke(() => window.Close());
         };
         MainWindow = window; window.Show();

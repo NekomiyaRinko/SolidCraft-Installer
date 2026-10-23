@@ -120,7 +120,14 @@ internal static class Program
                 Check(model.State.IsBusy, "cancel task active");
                 model.State.CancelCommand.Execute(null);
                 Check(!await run && !model.State.IsBusy && model.State.Status.Contains("取消"), "cancel propagates token");
-                await FeatureChecks.RunAsync(model, root, handler, Check);
+                 await FeatureChecks.RunAsync(model, root, handler, Check);
+                 await ModpackUiChecks.RunAsync(window, model, root, Check, Capture);
+                 await ModpackSampleUiChecks.RunAsync(window, model, Check, Capture);
+                 await ModpackChecks.RunAsync(root, Check);
+                 await ModpackQueueChecks.RunAsync(root, Check);
+                 await ModpackRecoveryChecks.RunAsync(root, Check);
+                 await ModpackTransportChecks.RunAsync(root, Check);
+                 await CurseForgeCredentialChecks.RunAsync(window, root, Check, Capture);
                 await ForbiddenChecks.RunAsync(model.State, root, Check);
                 await DiagnosticChecks.RunAsync(model.State, root, Check);
                 model.CurrentPage = "Settings"; window.UpdateLayout();

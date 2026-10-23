@@ -1,0 +1,13 @@
+<Window x:Class="McDownload.View.ExternalLinkDialog" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="打开外部网站" Width="460" SizeToContent="Height" ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent" FocusManager.FocusedElement="{Binding ElementName=CancelButton}">
+    <Border Background="White" CornerRadius="5" Padding="24" BorderBrush="#D3DDE9" BorderThickness="1"><StackPanel>
+        <TextBlock Text="打开外部网站？" FontSize="20" FontWeight="SemiBold"/>
+        <TextBlock Text="即将在默认浏览器中打开 CurseForge 开发者控制台。网站登录和应用申请由 CurseForge 处理，SCI 不会随链接发送 API key。" TextWrapping="Wrap" Foreground="#65758A" Margin="0,18,0,12" LineHeight="22"/>
+        <TextBlock Text="https://console.curseforge.com/" Foreground="{StaticResource Accent}" TextWrapping="Wrap"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
+            <Button x:Name="CancelButton" Content="取消" IsCancel="True" IsDefault="True" Style="{StaticResource Secondary}" Margin="0,0,10,0"/>
+            <Button x:Name="ConfirmButton" Content="继续打开" Click="Confirm" Style="{StaticResource Primary}" Margin="0"/>
+        </StackPanel>
+    </StackPanel></Border>
+</Window>

@@ -56,6 +56,14 @@ try {
     $before = @{}
     foreach ($name in $oldPresent) { $before[$name] = (Get-FileHash -LiteralPath (Join-Path $output $name)).Hash }
 
+    $credential = Join-Path $fixture 'src\McDownload\curseforge-key.dpapi'
+    [IO.File]::WriteAllText($credential, 'ciphertext fixture only')
+    $failed = $false
+    try { & $publish | Out-Null } catch { $failed = $_.Exception.Message -match 'Unexpected source archive input' }
+    Check ($failed -and $global:SCI_PublishTest.Publishes -eq 0) 'Encrypted credential in source tree must stop packaging before publish.'
+    Check ((@($oldPresent | Where-Object { (Get-FileHash -LiteralPath (Join-Path $output $_)).Hash -ne $before[$_] }).Count -eq 0)) 'Credential rejection must preserve the old bundle.'
+    Remove-Item -LiteralPath $credential
+
     $locked = Join-Path $fixture 'src\McDownload\fixture.cs'
     [IO.File]::WriteAllText($locked, 'source fixture')
     $lock = [IO.File]::Open($locked, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)

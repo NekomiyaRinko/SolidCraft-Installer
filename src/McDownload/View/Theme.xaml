@@ -34,6 +34,10 @@
         </Style.Triggers>
     </Style>
     <Style x:Key="RowButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Margin" Value="8,0,0,0"/></Style>
+    <Style x:Key="DownloadTab" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#65758A"/><Setter Property="BorderThickness" Value="0,0,0,2"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="Margin" Value="0,0,8,0"/><Setter Property="Padding" Value="14,8"/>
+        <Style.Triggers><Trigger Property="Tag" Value="{StaticResource SelectedState}"><Setter Property="Foreground" Value="{StaticResource Accent}"/><Setter Property="BorderBrush" Value="{StaticResource Accent}"/><Setter Property="FontWeight" Value="SemiBold"/></Trigger></Style.Triggers>
+    </Style>
     <Style x:Key="Secondary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Foreground" Value="#28394C"/></Style>
     <Style x:Key="MutedButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#768495"/></Style>
     <Style x:Key="Primary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">

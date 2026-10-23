@@ -12,6 +12,17 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     private readonly HttpClient _http;
     private readonly bool _ownsHttp;
     private readonly DiagnosticLog _diagnostics;
+    private readonly CurseForgeFileResolver _curseforge;
+    private string? _sessionCurseForgeKey;
+    public bool IsUpdatingCredentials { get; set; }
+    public bool HasCurseForgeApiKey => !string.IsNullOrWhiteSpace(_sessionCurseForgeKey);
+    public void SetCurseForgeApiKey(string? key)
+    {
+        if (IsBusy) throw new InvalidOperationException("请等待任务队列结束后修改 CurseForge API key。");
+        _sessionCurseForgeKey = key is null ? null : CurseForgeCredentialStore.Validate(key);
+        OnPropertyChanged(nameof(HasCurseForgeApiKey));
+    }
+    private readonly ModpackFileDownloader _modpackDownloads;
     private bool _loggingFailureReported;
     public string? DiagnosticLogPath => _diagnostics.FilePath;
     public string DiagnosticDirectory => _diagnostics.DirectoryPath;
@@ -47,12 +58,16 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     public GameDownloadService Games { get; private set; } = null!;
     public LoaderVersionCatalog Catalog { get; private set; } = null!;
     public InstalledVersionScanner InstalledVersions { get; private set; } = null!;
+    public ModpackImportService Modpacks { get; private set; } = null!;
     public long ConfigurationVersion { get; private set; }
-    public WorkspaceViewModel(HttpClient? http = null, DiagnosticLog? diagnostics = null)
+    public WorkspaceViewModel(HttpClient? http = null, DiagnosticLog? diagnostics = null, Func<string?>? curseForgeApiKey = null,
+        HttpMessageHandler? curseForgeHandler = null)
     {
         _ownsHttp = http is null;
         _http = http ?? new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
         _diagnostics = diagnostics ?? new DiagnosticLog();
+        _curseforge = new(() => _sessionCurseForgeKey ?? curseForgeApiKey?.Invoke(), curseForgeHandler);
+        _modpackDownloads = new(diagnostics: _diagnostics);
         Log("诊断日志文件：" + (_diagnostics.FilePath ?? "不可用"));
     }
     public ObservableCollection<string> Logs { get; } = new();
@@ -74,6 +89,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         Games = new(Instances, Versions, Fetcher);
         Catalog = new(Fetcher);
         InstalledVersions = new(Instances);
+        Modpacks = new(Instances, Versions, Games, Loaders, _curseforge, _modpackDownloads);
         ConfigurationVersion++;
         Log($"游戏目录：{root}；下载源：{downloadSource}");
         ConfigurationChanged?.Invoke(this, EventArgs.Empty);
@@ -116,11 +132,33 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         return EnqueueAsync(label, action);
     }
 
+    public Task<bool> EnqueueModpackAsync(ModpackImportRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.ExpectedArchiveSha256))
+            throw new ArgumentException("排队导入前请先预览整合包并固定源包摘要。", nameof(request));
+        var snapshot = request with { SelectedOptionalFiles = request.SelectedOptionalFiles?.ToArray() };
+        return EnqueueAsync(snapshot.DirectoryName + " · 导入整合包", async context =>
+        {
+            var result = await Modpacks.ImportAsync(snapshot, context);
+            if (result.State.Status != ModpackImportStatus.Completed) throw new ModpackFilesRequiredException(result);
+        }, ModpackImportService.Steps);
+    }
+
+    public Task<bool> ResumeModpackAsync(ModpackResumeRequest request)
+    {
+        var snapshot = request with { LocalFiles = request.LocalFiles?.ToDictionary(x => x.Key, x => x.Value) };
+        return EnqueueAsync("继续导入整合包", async context =>
+        {
+            var result = await Modpacks.ResumeAsync(snapshot, context);
+            if (result.State.Status != ModpackImportStatus.Completed) throw new ModpackFilesRequiredException(result);
+        }, ModpackImportService.Steps);
+    }
+
     public Task<bool> EnqueueAsync(string label, Func<OperationContext, Task> action,
         IReadOnlyList<(OperationStep Kind, string Title)>? steps = null)
     {
         ArgumentNullException.ThrowIfNull(action);
-        if (_stopping) return Task.FromResult(false);
+        if (_stopping || IsUpdatingCredentials) return Task.FromResult(false);
         steps ??= new[] { (OperationStep.Preparing, label) };
         if (steps.Count == 0 || steps.Select(x => x.Kind).Distinct().Count() != steps.Count)
             throw new ArgumentException("任务阶段不能为空或重复。", nameof(steps));
@@ -228,6 +266,9 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     {
         StopQueue();
         if (_ownsHttp) _http.Dispose();
+        _curseforge.Dispose();
+        _modpackDownloads.Dispose();
+        _sessionCurseForgeKey = null;
         _diagnostics.Dispose();
     }
 }

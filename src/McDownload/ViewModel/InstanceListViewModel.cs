@@ -6,7 +6,7 @@ using McDownload.Model;
 
 namespace McDownload.ViewModel;
 
-public sealed record InstanceItem(InstalledVersionInfo Version)
+public sealed record InstanceItem(InstalledVersionInfo Version, ModpackImportState? Modpack = null, string? ModpackError = null)
 {
     public InstanceMetadata? Metadata => Version.Metadata;
     public string Name => Version.Name;
@@ -15,21 +15,30 @@ public sealed record InstanceItem(InstalledVersionInfo Version)
     public bool CanManage => Metadata is not null;
     public string Isolation => CanManage ? "SCI 实例 · 模组与存档独立" : "已有版本 · 只读";
     public string Details => Version.Warning ?? (CanManage ? "模组与存档独立" : "非 SCI 创建的版本，仅查看信息和打开文件夹。");
+    public bool HasModpack => Modpack is not null || ModpackError is not null;
+    public bool CanResumeModpack => Modpack is { Status: not ModpackImportStatus.Completed };
+    public string ModpackStatus => Modpack is { } state ? "整合包 · " + DescribeImportStatus(state.Status) : ModpackError ?? "";
+    public static string DescribeImportStatus(ModpackImportStatus status) => status switch
+    {
+        ModpackImportStatus.Completed => "已完成", ModpackImportStatus.NeedsFiles => "待补齐文件",
+        ModpackImportStatus.Canceled => "已取消，可继续", ModpackImportStatus.Failed => "导入失败，可继续", _ => "导入未完成"
+    };
 }
 
 public partial class InstanceListViewModel : ObservableObject
 {
     public WorkspaceViewModel State { get; }
     private readonly Func<InstanceMetadata, Task> _manage;
+    private readonly Func<InstanceMetadata, Task>? _resumeModpack;
     public ObservableCollection<InstanceItem> Instances { get; } = new();
     [ObservableProperty] private InstanceItem? selectedInstance;
     [ObservableProperty] private bool isDeleteConfirmationVisible;
     [ObservableProperty] private string deleteWarning = "";
     private InstanceDeleteRequest? _pendingDelete;
     private long _refreshGeneration;
-    public InstanceListViewModel(WorkspaceViewModel state, Func<InstanceMetadata, Task> manage)
+    public InstanceListViewModel(WorkspaceViewModel state, Func<InstanceMetadata, Task> manage, Func<InstanceMetadata, Task>? resumeModpack = null)
     {
-        State = state; _manage = manage;
+        State = state; _manage = manage; _resumeModpack = resumeModpack;
         state.ConfigurationChanged += (_, _) => { _refreshGeneration++; SelectedInstance = null; Instances.Clear(); };
     }
     partial void OnSelectedInstanceChanged(InstanceItem? value) { IsDeleteConfirmationVisible = false; _pendingDelete = null; }
@@ -41,15 +50,31 @@ public partial class InstanceListViewModel : ObservableObject
             long generation = ++_refreshGeneration, configuration = State.ConfigurationVersion;
             string? directory = SelectedInstance?.Version.DirectoryPath;
             var items = await State.InstalledVersions.ScanAsync(default);
+            var loaded = new List<InstanceItem>();
+            foreach (var item in items)
+            {
+                ModpackImportState? pack = null; string? error = null;
+                if (item.Metadata is { } metadata)
+                {
+                    try { pack = await State.Modpacks.GetStateAsync(metadata.Id, default); }
+                    catch (Exception ex) { error = "整合包状态读取失败：" + Service.DiagnosticText.Summary(ex); }
+                }
+                loaded.Add(new(item, pack, error));
+            }
             if (generation != _refreshGeneration || configuration != State.ConfigurationVersion) return;
             Instances.Clear();
-            foreach (var item in items) Instances.Add(new(item));
+            foreach (var item in loaded) Instances.Add(item);
             SelectedInstance = Instances.FirstOrDefault(x => x.Version.DirectoryPath == directory) ?? Instances.FirstOrDefault();
         }
         catch (Exception ex) { State.ReportError("实例列表读取失败", ex); }
     }
     [RelayCommand] private async Task ManageLoaderAsync()
     { if (SelectedInstance?.Metadata is { } metadata) await _manage(metadata); }
+    [RelayCommand] private async Task ResumeModpackAsync()
+    {
+        if (!State.IsBusy && SelectedInstance is { CanResumeModpack: true, Metadata: { } metadata } && _resumeModpack is not null)
+            await _resumeModpack(metadata);
+    }
     [RelayCommand] private async Task OpenFolderAsync()
     {
         if (SelectedInstance is null) return;
