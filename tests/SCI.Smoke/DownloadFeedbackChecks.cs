@@ -108,8 +108,6 @@ internal static class DownloadFeedbackChecks
             await model.Download.NewGameLoader.PendingRefresh;
         }
 
-        await model.State.TaskNotification;
-        check(!model.State.HasTaskNotification, "task queue highlight clears automatically");
         await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
     }
 }

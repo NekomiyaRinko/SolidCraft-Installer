@@ -31,6 +31,13 @@ internal static class Program
         var window = new MainWindow { DataContext = model };
         int result = 0, checks = 0;
         void Check(bool ok, string name) { if (!ok) throw new Exception(name); checks++; }
+        async Task RunChecks(string name, Func<Task> run)
+        {
+            int before = checks;
+            try { await run(); }
+            catch (Exception ex) { throw new Exception($"{name} failed after {checks - before} checks", ex); }
+            Console.WriteLine(checks == before ? $"SKIP {name}: no checks executed" : $"PASS {name}: {checks - before} checks");
+        }
         IEnumerable<T> Find<T>(DependencyObject parent) where T : DependencyObject
         {
             for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
@@ -67,11 +74,11 @@ internal static class Program
                 var instance = await model.State.Instances.CreateAsync(new("Survival", "1.20.1", IsolationPolicy.PerInstance, new("生存世界", null, null)), default);
                 await model.Instances.RefreshAsync();
                 Check(model.Instances.Instances.Count == 1, "instance list");
-                await UiChecks.RunAsync(window, model, Check, Capture);
-                await DownloadFeedbackChecks.RunAsync(window, model, handler, Check, Capture);
-                await ColorStateChecks.RunAsync(window, model, Check, Capture);
-                await QueueChecks.RunAsync(window, model, root, handler, Check, Capture);
-                await SettingsStyleChecks.RunAsync(window, root, handler, Check, Capture);
+                await RunChecks(nameof(UiChecks), () => UiChecks.RunAsync(window, model, Check, Capture));
+                await RunChecks(nameof(DownloadFeedbackChecks), () => DownloadFeedbackChecks.RunAsync(window, model, handler, Check, Capture));
+                await RunChecks(nameof(ColorStateChecks), () => ColorStateChecks.RunAsync(window, model, Check, Capture));
+                await RunChecks(nameof(QueueChecks), () => QueueChecks.RunAsync(window, model, root, handler, Check, Capture));
+                await RunChecks(nameof(SettingsStyleChecks), () => SettingsStyleChecks.RunAsync(window, root, handler, Check, Capture));
                 foreach (string page in new[] { "Instances", "Download", "Settings", "Loaders", "Tasks", "About", "Licenses", "ProjectLicense" })
                 {
                     model.CurrentPage = page; window.UpdateLayout();
@@ -120,28 +127,27 @@ internal static class Program
                 Check(model.State.IsBusy, "cancel task active");
                 model.State.CancelCommand.Execute(null);
                 Check(!await run && !model.State.IsBusy && model.State.Status.Contains("取消"), "cancel propagates token");
-                  await DownloadConcurrencyChecks.RunAsync(root, Check);
-                  await FeatureChecks.RunAsync(model, root, handler, Check);
-                 await ModpackUiChecks.RunAsync(window, model, root, Check, Capture);
-                  if (!args.Contains("--fixture-only")) await ModpackSampleUiChecks.RunAsync(window, model, Check, Capture);
-                 await ModpackChecks.RunAsync(root, Check);
-                 await ModpackQueueChecks.RunAsync(root, Check);
-                 await ModpackRecoveryChecks.RunAsync(root, Check);
-                 await ModpackTransportChecks.RunAsync(root, Check);
-                 await CurseForgeCredentialChecks.RunAsync(window, root, Check, Capture);
-                 LocalizationChecks.Run(root, Check);
-                await ForbiddenChecks.RunAsync(model.State, root, Check);
-                await DiagnosticChecks.RunAsync(model.State, root, Check);
+                await RunChecks(nameof(DownloadConcurrencyChecks), () => DownloadConcurrencyChecks.RunAsync(root, Check));
+                await RunChecks(nameof(FeatureChecks), () => FeatureChecks.RunAsync(model, root, handler, Check));
+                await RunChecks(nameof(ModpackUiChecks), () => ModpackUiChecks.RunAsync(window, model, root, Check, Capture));
+                if (!args.Contains("--fixture-only"))
+                    await RunChecks(nameof(ModpackSampleUiChecks), () => ModpackSampleUiChecks.RunAsync(window, model, Check, Capture));
+                else Console.WriteLine($"SKIP {nameof(ModpackSampleUiChecks)}: --fixture-only");
+                await RunChecks(nameof(ModpackChecks), () => ModpackChecks.RunAsync(root, Check));
+                await RunChecks(nameof(ModpackQueueChecks), () => ModpackQueueChecks.RunAsync(root, Check));
+                await RunChecks(nameof(ModpackRecoveryChecks), () => ModpackRecoveryChecks.RunAsync(root, Check));
+                await RunChecks(nameof(ModpackTransportChecks), () => ModpackTransportChecks.RunAsync(root, Check));
+                await RunChecks(nameof(CurseForgeCredentialChecks), () => CurseForgeCredentialChecks.RunAsync(window, root, Check, Capture));
+                await RunChecks(nameof(LocalizationChecks), () => { LocalizationChecks.Run(root, Check); return Task.CompletedTask; });
+                await RunChecks(nameof(ForbiddenChecks), () => ForbiddenChecks.RunAsync(model.State, root, Check));
+                await RunChecks(nameof(DiagnosticChecks), () => DiagnosticChecks.RunAsync(model.State, root, Check));
                 model.CurrentPage = "Settings"; window.UpdateLayout();
                 Check(Find<Button>(window).Any(x => x.IsVisible && Equals(x.Content, "打开日志文件夹")), "diagnostic log action visible");
-                model.CurrentPage = "About"; window.UpdateLayout();
-                Check(Find<TextBlock>(window).Any(x => x.IsVisible && x.Text.Contains("2020–2026 huangyuhui")), "HMCL copyright and license notice visible");
-                Check(Find<Button>(window).Any(x => x.IsVisible && Equals(x.Content, "开放源代码许可")), "embedded open source licenses action visible");
                 Check(model.Licenses.Documents.Select(x => x.FileName).SequenceEqual(new[]
                     { "LICENSE", "HMCL-ADDITIONAL-TERMS.md", "NOTICE", "THIRD-PARTY-NOTICES.md" }) &&
                     model.Licenses.Documents.All(x => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, x.FileName)) == x.Content),
                     "license texts are embedded in the application assembly in project order and match the source files");
-                await LicenseChecks.RunAsync(window, model, Check, Capture);
+                await RunChecks(nameof(LicenseChecks), () => LicenseChecks.RunAsync(window, model, Check, Capture));
                 string thirdPartyNotices = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "THIRD-PARTY-NOTICES.md"));
                 Check(thirdPartyNotices.Contains("CommunityToolkit.Mvvm 8.4.0") && thirdPartyNotices.Contains("Copyright © .NET Foundation and Contributors"),
                     "MVVM dependency copyright notice is distributed with the application");

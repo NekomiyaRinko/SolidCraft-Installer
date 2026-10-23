@@ -61,6 +61,6 @@ internal static class ModpackQueueChecks
         check(!finished && workspace.Tasks.Last().State == QueuedTaskState.Failed &&
             !(await workspace.Instances.ListAsync(default)).Any(x => x.DirectoryName == "MissingCF"),
             "queued CF preflight rejects missing key without creating an instance");
-        check(await workspace.EnqueueAsync("next-after-incomplete", _ => Task.CompletedTask), "queue continues after incomplete import");
+        check(await workspace.EnqueueAsync("next-after-preflight-failure", _ => Task.CompletedTask), "queue accepts new work after missing-key preflight failure");
     }
 }

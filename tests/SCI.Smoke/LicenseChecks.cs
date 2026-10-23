@@ -1,7 +1,9 @@
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
+using McDownload.i18n;
 using McDownload.View;
 using McDownload.ViewModel;
 
@@ -25,7 +27,10 @@ internal static class LicenseChecks
         var about = Find<AboutView>(owner).Single();
         var settings = Find<SettingsView>(owner).Single();
         var labels = Find<TextBlock>(about).Select(x => x.Text).ToArray();
-        check(model.ProductVersion == "0.5.0" && ((TextBlock)about.FindName("ProductVersionLabel")).Text == "版本 0.5.0",
+        string version = typeof(MainWindowViewModel).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!
+            .InformationalVersion.Split('+')[0];
+        check(!string.IsNullOrWhiteSpace(version) && model.ProductVersion == version &&
+            ((TextBlock)about.FindName("ProductVersionLabel")).Text == Text.Format("AboutView", "VersionFormat", version),
             "about version is bound to the application informational version");
         check(labels.Any(x => x.Contains("2020–2026 huangyuhui and HMCL contributors")) &&
             labels.Any(x => x.Contains("Copyright © 2026 NekomiyaRinko.")), "about preserves both copyright notices at the same level");
@@ -37,13 +42,14 @@ internal static class LicenseChecks
         capture("SCI-about", null);
 
         var open = (Button)about.FindName("OpenLicensesButton");
+        bool openVisible = open.IsVisible && Equals(open.Content, Text.Get("AboutView", "OpenLicenses"));
         open.Command.Execute(open.CommandParameter);
         await owner.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
         owner.UpdateLayout();
         var view = Find<LicensesView>(owner).Single();
         var tree = (TreeView)view.FindName("LicenseTree");
         var content = (TextBox)view.FindName("LicenseContent");
-        check(model.CurrentPage == "Licenses" && view.IsVisible && tree.Items.Count == 2 &&
+        check(openVisible && model.CurrentPage == "Licenses" && view.IsVisible && tree.Items.Count == 2 &&
             content.Text == model.Licenses.Documents[0].Content && content.IsReadOnly, "license button opens a grouped secondary page with complete embedded GPL text");
         check(model.Licenses.Groups.SelectMany(x => x.Documents).SequenceEqual(model.Licenses.Documents) &&
             model.Licenses.Groups[0].Documents.Count == 3 && model.Licenses.Groups[1].Documents.Count == 1,

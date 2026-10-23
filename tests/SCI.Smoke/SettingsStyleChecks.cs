@@ -131,7 +131,7 @@ internal static class SettingsStyleChecks
             memory.Focus(); memory.Text = "13000";
             window.CommitSettingsInput(); await settings.PendingSave;
             using (var saved = JsonDocument.Parse(await File.ReadAllBytesAsync(settingsFile)))
-                check(saved.RootElement.GetProperty("memory").GetString() == "13000", "window closing commits a still-focused settings input before waiting for saves");
+                check(saved.RootElement.GetProperty("memory").GetString() == "13000", "explicit input commit saves a still-focused settings input");
             javaBrowse.Focus(); settings.DefaultMemoryMb = 11000; await settings.PendingSave;
 
             var source = (ComboBox)view.FindName("DownloadSourceCombo");
