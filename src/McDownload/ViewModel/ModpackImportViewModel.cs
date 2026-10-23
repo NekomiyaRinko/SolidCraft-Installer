@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -38,16 +39,16 @@ public partial class ModpackImportViewModel : ObservableObject
     public bool HasError => Error.Length > 0;
     public bool HasMessage => Message.Length > 0;
     public string PackName => Definition?.Name ?? "";
-    public string PackVersion => "整合包版本 " + Definition?.Version;
-    public string PackFormat => Definition?.Format.ToString() ?? "";
+    public string PackVersion => Text.Format("ModpackImport", "PackVersion", Definition?.Version);
+    public string PackFormat => Definition is { } pack ? DisplayNames.Pack(pack.Format) : "";
     public string MinecraftVersion => Definition?.MinecraftVersion ?? "";
-    public string Loader => Definition?.Loader is { } loader ? $"{loader.Kind} {loader.Version}" : "不安装加载器";
+    public string Loader => Definition?.Loader is { } loader ? Text.Format("ModpackImport", "LoaderVersion", DisplayNames.Loader(loader.Kind), loader.Version) : Text.Get("ModpackImport", "NoLoaderInstallation");
     public bool IsCurseForge => Definition?.Format == ModpackFormat.CurseForge;
     public string CurseForgeAccessMessage => _state.HasCurseForgeApiKey
-        ? "已配置 CurseForge 应用 API key，安装前将验证文件访问权限；限制自动下载的文件仍需手动补齐。"
-        : "尚未配置 CurseForge 应用 API key，请先前往设置配置；限制自动下载的文件仍需手动补齐。";
+        ? Text.Get("ModpackImport", "CredentialConfigured")
+        : Text.Get("ModpackImport", "CredentialMissing");
     public string FileSummary => Definition is { } pack
-        ? $"{pack.Files.Count(x => x.ArchiveEntry is null)} 个清单文件 · {pack.Files.Count(x => x.ArchiveEntry is not null)} 个覆盖文件" : "";
+        ? Text.Format("ModpackImport", "FileCounts", pack.Files.Count(x => x.ArchiveEntry is null), pack.Files.Count(x => x.ArchiveEntry is not null)) : "";
     public string InstancePath => _state.ConfigurationVersion == 0 ? "" : Path.Combine(_state.Instances.MinecraftRoot, "versions", InstanceName);
     public bool HasNameError => HasPack && NameError.Length > 0;
     public string NameError
@@ -59,7 +60,7 @@ public partial class ModpackImportViewModel : ObservableObject
                 InstanceManager.ValidateName(InstanceName);
                 InstanceManager.ValidateName(InstanceName + ".json");
                 if (_queuedNames.Contains(InstanceName) || Directory.Exists(InstancePath) || File.Exists(InstancePath))
-                    return "实例名称已存在或已排队，请使用其他名称。";
+                    return Text.Get("ModpackImport", "DuplicateInstanceName");
                 return "";
             }
             catch (Exception ex) when (ex is ArgumentException or IOException or InstanceValidationException)
@@ -90,7 +91,7 @@ public partial class ModpackImportViewModel : ObservableObject
     public async Task LoadFilesAsync(IReadOnlyList<string> paths)
     {
         Reset();
-        if (!AcceptsFiles(paths)) { Error = "请一次选择一个 .mrpack 或 CurseForge .zip 分发包。"; return; }
+        if (!AcceptsFiles(paths)) { Error = Text.Get("ModpackImport", "SelectSingleArchive"); return; }
         long generation = _generation;
         using var source = new CancellationTokenSource();
         _previewCancellation = source;
@@ -114,8 +115,8 @@ public partial class ModpackImportViewModel : ObservableObject
         catch (Exception ex)
         {
             if (generation != _generation) return;
-            Error = "整合包读取失败：" + DiagnosticText.Summary(ex);
-            _state.LogException("整合包读取失败", ex);
+            Error = Text.Format("ModpackImport", "ArchiveReadFailed", DiagnosticText.Summary(ex));
+            _state.LogException(Text.Get("ModpackImport", "ArchiveReadLog"), ex);
         }
         finally
         {
@@ -124,12 +125,12 @@ public partial class ModpackImportViewModel : ObservableObject
     }
     [RelayCommand] private async Task BrowseAsync()
     {
-        var dialog = new OpenFileDialog { Title = "选择整合包", Filter = "整合包分发文件|*.mrpack;*.zip", CheckFileExists = true };
+        var dialog = new OpenFileDialog { Title = Text.Get("ModpackImport", "SelectArchive"), Filter = Text.Get("Common", "ModpackFileFilter"), CheckFileExists = true };
         if (dialog.ShowDialog(System.Windows.Application.Current.MainWindow) == true) await LoadFilesAsync(new[] { dialog.FileName });
     }
     [RelayCommand] private void BrowseJava()
     {
-        var dialog = new OpenFileDialog { Title = "选择安装器 Java", Filter = "Java 程序|java.exe", CheckFileExists = true };
+        var dialog = new OpenFileDialog { Title = Text.Get("ModpackImport", "SelectInstallerJava"), Filter = Text.Get("Common", "JavaFileFilter"), CheckFileExists = true };
         if (dialog.ShowDialog(System.Windows.Application.Current.MainWindow) == true) JavaPath = dialog.FileName;
     }
     [RelayCommand] public void Reset()
@@ -149,11 +150,11 @@ public partial class ModpackImportViewModel : ObservableObject
         try
         {
             if (!string.IsNullOrWhiteSpace(JavaPath) && (!File.Exists(JavaPath) || !JavaPath.EndsWith("java.exe", StringComparison.OrdinalIgnoreCase)))
-                throw new ArgumentException("请选择有效的 java.exe。");
+                throw new ArgumentException(Text.Get("Common", "InvalidJava"));
             var request = new ModpackImportRequest(ArchivePath, name, string.IsNullOrWhiteSpace(JavaPath) ? null : JavaPath,
                 OptionalFiles.Where(x => x.IsSelected).Select(x => x.File.Key).ToArray(), pack.ArchiveSha256);
             Error = ""; IsChecking = true; _previewCancellation = cancellation;
-            Message = IsCurseForge ? "正在检查 CurseForge 文件访问权限…" : "";
+            Message = IsCurseForge ? Text.Get("ModpackImport", "CheckingAccess") : "";
             checkingAccess = true;
             await importer.CheckAccessAsync(pack, request.SelectedOptionalFiles!, cancellation.Token);
             checkingAccess = false;
@@ -161,9 +162,9 @@ public partial class ModpackImportViewModel : ObservableObject
             int count = _state.Tasks.Count;
             LastSubmission = _state.EnqueueModpackAsync(request);
             if (_state.Tasks.Count == count && LastSubmission.IsCompletedSuccessfully && !LastSubmission.Result)
-                throw new InvalidOperationException("任务队列暂不可用，未添加任务；请等待凭据应用完成后重试。");
+                throw new InvalidOperationException(Text.Get("ModpackImport", "QueueUnavailable"));
             _queuedNames.Add(name);
-            Reset(); Message = $"「{name}」已加入下载队列。";
+            Reset(); Message = Text.Format("ModpackImport", "TaskAdded", name);
             _ = ReleaseNameAsync(name, LastSubmission, _state.ConfigurationVersion);
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }

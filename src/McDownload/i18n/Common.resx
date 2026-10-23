@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="All" xml:space="preserve"><value>全部</value></data>
+  <data name="Canceled" xml:space="preserve"><value>已取消</value></data>
+  <data name="Completed" xml:space="preserve"><value>已完成</value></data>
+  <data name="DownloadAssets" xml:space="preserve"><value>下载资源文件</value></data>
+  <data name="DownloadClient" xml:space="preserve"><value>下载客户端</value></data>
+  <data name="DownloadLibraries" xml:space="preserve"><value>下载依赖库</value></data>
+  <data name="Failed" xml:space="preserve"><value>失败</value></data>
+  <data name="InProgress" xml:space="preserve"><value>进行中</value></data>
+  <data name="InvalidJava" xml:space="preserve"><value>请选择有效的 java.exe。</value></data>
+  <data name="JavaFileFilter" xml:space="preserve"><value>Java 程序|java.exe</value></data>
+  <data name="ModpackFileFilter" xml:space="preserve"><value>整合包分发文件|*.mrpack;*.zip</value></data>
+  <data name="NoInstall" xml:space="preserve"><value>不安装</value></data>
+  <data name="NoLoaderInstalled" xml:space="preserve"><value>未安装加载器</value></data>
+  <data name="Release" xml:space="preserve"><value>正式版</value></data>
+  <data name="Snapshot" xml:space="preserve"><value>测试版</value></data>
+  <data name="TaskCanceled" xml:space="preserve"><value>任务已取消</value></data>
+  <data name="TaskCompleted" xml:space="preserve"><value>任务完成</value></data>
+  <data name="TaskIncomplete" xml:space="preserve"><value>任务未完成</value></data>
+  <data name="Waiting" xml:space="preserve"><value>等待执行</value></data>
+  <data name="InstalledLoader" xml:space="preserve"><value>{0} · {1}</value></data>
+  <data name="IssueSeparator" xml:space="preserve"><value>；</value></data>
+  <data name="NameSeparator" xml:space="preserve"><value>、</value></data>
+  <data name="Forge" xml:space="preserve"><value>Forge</value></data>
+  <data name="Fabric" xml:space="preserve"><value>Fabric</value></data>
+  <data name="NeoForge" xml:space="preserve"><value>NeoForge</value></data>
+  <data name="Modrinth" xml:space="preserve"><value>Modrinth</value></data>
+  <data name="CurseForge" xml:space="preserve"><value>CurseForge</value></data>
+</root>

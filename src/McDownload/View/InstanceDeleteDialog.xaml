@@ -1,9 +1,9 @@
-<Window x:Class="McDownload.View.InstanceDeleteDialog" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="删除实例" Width="460" SizeToContent="Height" ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+<Window x:Class="McDownload.View.InstanceDeleteDialog" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:i18n="clr-namespace:McDownload.i18n"
+        Title="{i18n:Loc InstanceDeleteDialog, Title}" Width="460" SizeToContent="Height" ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent" FocusManager.FocusedElement="{Binding ElementName=CancelButton}">
     <Border Background="White" CornerRadius="5" Padding="24" BorderBrush="#D3DDE9" BorderThickness="1">
         <StackPanel>
-            <TextBlock Text="删除实例" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource DangerBrush}"/>
+            <TextBlock Text="{i18n:Loc InstanceDeleteDialog, Title}" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource DangerBrush}"/>
             <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="260" Margin="0,18,0,0">
                 <StackPanel>
                     <TextBlock Text="{Binding SelectedInstance.Name}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,12"/>
@@ -11,8 +11,8 @@
                 </StackPanel>
             </ScrollViewer>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
-                <Button x:Name="CancelButton" Content="取消" IsCancel="True" IsDefault="True" Style="{StaticResource Secondary}" Margin="0,0,10,0"/>
-                <Button x:Name="ConfirmButton" Content="确认删除" Command="{Binding ConfirmDeleteCommand}" Style="{StaticResource Danger}" Margin="0"/>
+                <Button x:Name="CancelButton" Content="{i18n:Loc InstanceDeleteDialog, Cancel}" IsCancel="True" IsDefault="True" Style="{StaticResource Secondary}" Margin="0,0,10,0"/>
+                <Button x:Name="ConfirmButton" Content="{i18n:Loc InstanceDeleteDialog, ConfirmDelete}" Command="{Binding ConfirmDeleteCommand}" Style="{StaticResource Danger}" Margin="0"/>
             </StackPanel>
         </StackPanel>
     </Border>

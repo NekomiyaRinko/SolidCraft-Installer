@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="ApiKeyMissing" xml:space="preserve"><value>未配置 CurseForge API key，请前往设置中的 CurseForge 卡片配置后重试。</value></data>
+  <data name="AuthenticationFailed" xml:space="preserve"><value>CurseForge API 认证失败或访问被拒绝（HTTP {0}），请检查设置中的应用 API key。</value></data>
+  <data name="ConnectionFailed" xml:space="preserve"><value>无法连接 CurseForge 官方 API，请检查网络后重试。</value></data>
+  <data name="FileIdMismatch" xml:space="preserve"><value>CurseForge 返回的文件标识不一致。</value></data>
+  <data name="FileReferenceMissing" xml:space="preserve"><value>文件缺少 CurseForge 标识。</value></data>
+  <data name="FileUnavailable" xml:space="preserve"><value>CurseForge 文件不可访问或已下架。</value></data>
+  <data name="HashMissing" xml:space="preserve"><value>CurseForge 未返回可验证的文件摘要。</value></data>
+  <data name="InvalidFileReference" xml:space="preserve"><value>CurseForge 文件标识不合法。</value></data>
+  <data name="ManualDownloadRequired" xml:space="preserve"><value>该文件需要从 CurseForge 页面手动下载后补齐。</value></data>
+  <data name="ProjectMismatch" xml:space="preserve"><value>CurseForge 返回的项目或游戏不一致。</value></data>
+  <data name="ProjectUnavailable" xml:space="preserve"><value>CurseForge 项目信息不可访问。</value></data>
+  <data name="RequestTimeout" xml:space="preserve"><value>CurseForge API 请求超时。</value></data>
+  <data name="ResponseMissing" xml:space="preserve"><value>CurseForge 响应内容缺失。</value></data>
+  <data name="ResponseTooLarge" xml:space="preserve"><value>CurseForge 响应超过大小上限。</value></data>
+  <data name="UnsupportedCategory" xml:space="preserve"><value>不支持该 CurseForge 文件类别，无法确定安装目录。</value></data>
+  <data name="HttpFailed" xml:space="preserve"><value>CurseForge API HTTP {0}。</value></data>
+</root>

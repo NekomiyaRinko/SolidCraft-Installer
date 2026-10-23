@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Net;
 using McDownload.Model;
 
@@ -35,7 +36,7 @@ public sealed class ModpackFileDownloader : IDisposable
                     string? digest = null;
                     using var response = await GetAsync(original, deadline.Token);
                     if (response.Content.Headers.ContentLength is long length && length != file.Size)
-                        throw new DownloadIntegrityException("整合包下载响应大小不一致。");
+                        throw new DownloadIntegrityException(Text.Get("ModpackFileDownloader", "ResponseSizeMismatch"));
                     await InstanceManager.AtomicWriteAsync(target, async (output, ct) =>
                     {
                         await using var input = await response.Content.ReadAsStreamAsync(ct);
@@ -46,8 +47,8 @@ public sealed class ModpackFileDownloader : IDisposable
                 catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
                 catch (Exception error) when (error is HttpRequestException or IOException or InvalidDataException or OperationCanceledException)
                 {
-                    lastError = error is OperationCanceledException ? new TimeoutException("整合包文件下载超时。", error) : error;
-                    _diagnostics?.Write("HTTP", "整合包下载失败：" + DiagnosticText.Address(original), lastError);
+                    lastError = error is OperationCanceledException ? new TimeoutException(Text.Get("ModpackFileDownloader", "DownloadTimeout"), error) : error;
+                    _diagnostics?.Write("HTTP", Text.Format("ModpackFileDownloader", "DownloadFailed", DiagnosticText.Address(original)), lastError);
                     bool retry = error is not (DownloadIntegrityException or InvalidDataException) &&
                         (error is not HttpRequestException request || request.StatusCode is null or HttpStatusCode.RequestTimeout ||
                             (int)request.StatusCode.Value >= 500);
@@ -56,7 +57,7 @@ public sealed class ModpackFileDownloader : IDisposable
                 }
             }
         }
-        throw lastError ?? new InvalidDataException("整合包文件没有可用下载地址。");
+        throw lastError ?? new InvalidDataException(Text.Get("ModpackFileDownloader", "DownloadAddressMissing"));
     }
 
     private async Task<HttpResponseMessage> GetAsync(Uri uri, CancellationToken token)
@@ -69,18 +70,18 @@ public sealed class ModpackFileDownloader : IDisposable
             try
             {
                 ModpackSafety.RequireDownloadUri(final);
-                _diagnostics?.Write("HTTP", $"整合包 status={(int)response.StatusCode}; uri={DiagnosticText.Address(uri)}");
+                _diagnostics?.Write("HTTP", Text.Format("ModpackFileDownloader", "ResponseStatus", (int)response.StatusCode, DiagnosticText.Address(uri)));
                 if (response.StatusCode is HttpStatusCode.MovedPermanently or HttpStatusCode.Redirect or
                     HttpStatusCode.SeeOther or HttpStatusCode.TemporaryRedirect or HttpStatusCode.PermanentRedirect)
                 {
                     if (redirects >= 5 || response.Headers.Location is not { } location)
-                        throw new InvalidDataException("整合包下载重定向无效或过多。");
+                        throw new InvalidDataException(Text.Get("ModpackFileDownloader", "InvalidRedirect"));
                     uri = new Uri(uri, location);
                     response.Dispose();
                     continue;
                 }
                 if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException($"整合包下载 HTTP {(int)response.StatusCode}：{DiagnosticText.Address(uri)}", null, response.StatusCode);
+                    throw new HttpRequestException(Text.Format("ModpackFileDownloader", "HttpFailed", (int)response.StatusCode, DiagnosticText.Address(uri)), null, response.StatusCode);
                 return response;
             }
             catch { response.Dispose(); throw; }

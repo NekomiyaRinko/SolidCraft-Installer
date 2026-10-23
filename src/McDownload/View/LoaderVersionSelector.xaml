@@ -1,9 +1,9 @@
-<UserControl x:Class="McDownload.View.LoaderVersionSelector" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<UserControl x:Class="McDownload.View.LoaderVersionSelector" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:i18n="clr-namespace:McDownload.i18n">
     <StackPanel>
-        <TextBlock Text="加载器" Style="{StaticResource Label}"/>
+        <TextBlock Text="{i18n:Loc LoaderVersionSelector, Loader}" Style="{StaticResource Label}"/>
         <ComboBox ItemsSource="{Binding LoaderTypes}" SelectedItem="{Binding SelectedType}"/>
         <StackPanel Visibility="{Binding SelectedType, Converter={StaticResource LoaderVisibility}}">
-            <TextBlock Text="加载器版本" Style="{StaticResource Label}"/>
+            <TextBlock Text="{i18n:Loc LoaderVersionSelector, LoaderVersion}" Style="{StaticResource Label}"/>
             <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="110"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                 <ComboBox ItemsSource="{Binding Channels}" SelectedItem="{Binding SelectedChannel}" MinWidth="0"/>
@@ -11,7 +11,7 @@
                     <ComboBox.Style><Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}"><Style.Triggers><DataTrigger Binding="{Binding IsLoading}" Value="True"><Setter Property="IsEnabled" Value="False"/></DataTrigger></Style.Triggers></Style></ComboBox.Style>
                 </ComboBox>
             </Grid>
-            <DockPanel Margin="0,8,0,0"><Button Content="刷新版本" DockPanel.Dock="Right" Command="{Binding ReloadCommand}" Style="{StaticResource RowButton}"/><TextBlock Text="{Binding Message}" Foreground="#65758A" TextWrapping="Wrap" VerticalAlignment="Center"/></DockPanel>
+            <DockPanel Margin="0,8,0,0"><Button Content="{i18n:Loc LoaderVersionSelector, RefreshVersions}" DockPanel.Dock="Right" Command="{Binding ReloadCommand}" Style="{StaticResource RowButton}"/><TextBlock Text="{Binding Message}" Foreground="#65758A" TextWrapping="Wrap" VerticalAlignment="Center"/></DockPanel>
         </StackPanel>
     </StackPanel>
 </UserControl>

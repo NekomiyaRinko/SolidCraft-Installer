@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Exited" xml:space="preserve"><value>SCI 已退出。</value></data>
+  <data name="InitializationFailed" xml:space="preserve"><value>应用初始化失败</value></data>
+  <data name="UnhandledProcessException" xml:space="preserve"><value>未处理的进程异常</value></data>
+  <data name="UnhandledUiException" xml:space="preserve"><value>未处理的界面异常</value></data>
+  <data name="UnobservedTaskException" xml:space="preserve"><value>未观察到的任务异常</value></data>
+</root>

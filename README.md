@@ -82,6 +82,12 @@ BMCLAPI 加速覆盖游戏清单、版本 JSON、客户端、资源、依赖库�
 
 项目使用 **.NET 10 SDK、C# 14、WPF 和 MVVM**，NuGet 依赖为 `CommunityToolkit.Mvvm 8.4.0`，界面使用 WPF 原生控件。
 
+### 界面文案
+
+当前源码版本为 `0.5.0`。界面文案统一位于 [`src/McDownload/i18n/`](src/McDownload/i18n/)，使用 .NET 原生 `.resx` 资源，按页面和服务分组，`Common.resx` 存放公共文案。XAML 通过 `{i18n:Loc Group, Key}` 引用；C# 通过 `Text.Get("Group", "Key")` 或 `Text.Format("Group", "Key", args)` 引用。带变量的文案以完整模板保存，格式化使用当前区域设置，缺失资源直接报错。
+
+资源覆盖静态标签、弹窗、文件选择框、状态和界面可见的后端错误；当前保留中文，不提供语言切换。导航标识、协议字段、路径和持久化数据值不作翻译；第三方动态内容及完整许可原文保持原来源。修改文案时优先只改对应 `.resx` 的 `value`，保留语义资源键、格式占位符、换行及筛选器语法。离线回归校验编译资源、缺键、区域回退、源码引用和硬编码遗漏，并保留现有 UI 行为与文案断言。
+
 ```powershell
 dotnet build SCI.slnx
 dotnet run --project src/McDownload/McDownload.csproj

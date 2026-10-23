@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="BackToInstances" xml:space="preserve"><value>返回实例</value></data>
+  <data name="ResumeImport" xml:space="preserve"><value>继续导入</value></data>
+  <data name="ImportStatus" xml:space="preserve"><value>导入状态</value></data>
+  <data name="PreserveInstalledFilesNotice" xml:space="preserve"><value>已安装的游戏、加载器和已校验文件会保留。待补齐文件将在继续导入时校验大小和摘要。</value></data>
+  <data name="SourceArchive" xml:space="preserve"><value>源分发包</value></data>
+  <data name="ChooseAgain" xml:space="preserve"><value>重新选择</value></data>
+  <data name="SourceArchiveHint" xml:space="preserve"><value>源包移动后可重新选择，继续导入需要内容相同的分发包。</value></data>
+  <data name="MissingFilesFormat" xml:space="preserve"><value>待补齐文件 · {0} 项</value></data>
+  <data name="OpenDownloadPage" xml:space="preserve"><value>打开下载页面</value></data>
+  <data name="ChooseLocalFile" xml:space="preserve"><value>选择本地文件</value></data>
+  <data name="RestoreApiAccessNotice" xml:space="preserve"><value>无法取得路径和摘要的文件，需要恢复 CurseForge API 访问后重新检查，不能仅凭文件名补齐。</value></data>
+  <data name="RecheckAndResume" xml:space="preserve"><value>重新检查并继续</value></data>
+  <data name="TaskQueuedNotice" xml:space="preserve"><value>任务已加入队列，可前往任务队列查看进度。</value></data>
+  <data name="ViewTaskQueue" xml:space="preserve"><value>查看任务队列</value></data>
+</root>

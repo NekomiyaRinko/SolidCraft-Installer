@@ -1,16 +1,16 @@
-<UserControl x:Class="McDownload.View.TaskView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="clr-namespace:McDownload.ViewModel">
+<UserControl x:Class="McDownload.View.TaskView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="clr-namespace:McDownload.ViewModel" xmlns:i18n="clr-namespace:McDownload.i18n">
     <Grid>
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
         <StackPanel>
-            <Button Content="← 返回" Command="{Binding CloseTasksCommand}" HorizontalAlignment="Left" Margin="0,0,0,16"/>
-            <TextBlock Text="任务队列" Style="{StaticResource Heading}" Margin="0,0,0,8"/>
+            <Button Content="{i18n:Loc TaskView, Back}" Command="{Binding CloseTasksCommand}" HorizontalAlignment="Left" Margin="0,0,0,16"/>
+            <TextBlock Text="{i18n:Loc TaskView, Heading}" Style="{StaticResource Heading}" Margin="0,0,0,8"/>
             <TextBlock Text="{Binding State.QueueSummary}" Foreground="#65758A" Margin="0,0,0,18"/>
         </StackPanel>
         <TextBlock x:Name="TaskError" Grid.Row="1" Text="{Binding State.Error}" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" Margin="0,0,0,12">
             <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding State.Error}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
         </TextBlock>
         <Grid Grid.Row="2">
-            <TextBlock Text="还没有任务，在“下载游戏”中选择版本并添加安装任务。" TextWrapping="Wrap" Foreground="#65758A" Margin="0,20">
+            <TextBlock Text="{i18n:Loc TaskView, NoTasksHint}" TextWrapping="Wrap" Foreground="#65758A" Margin="0,20">
                 <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding State.Tasks.Count}" Value="0"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
             </TextBlock>
             <ScrollViewer x:Name="QueueScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -33,20 +33,20 @@
                                 <StackPanel>
                                     <DockPanel LastChildFill="True">
                                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0">
-                                            <Button Content="移出队列" Command="{Binding DataContext.State.RemoveQueuedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Visibility="{Binding IsPending, Converter={StaticResource BoolVisibility}}" Style="{StaticResource MutedButton}" Margin="0"/>
-                                            <Button Content="取消当前项" Command="{Binding DataContext.State.CancelCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" Visibility="{Binding IsRunning, Converter={StaticResource BoolVisibility}}" Margin="0"/>
+                                            <Button Content="{i18n:Loc TaskView, RemoveFromQueue}" Command="{Binding DataContext.State.RemoveQueuedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Visibility="{Binding IsPending, Converter={StaticResource BoolVisibility}}" Style="{StaticResource MutedButton}" Margin="0"/>
+                                            <Button Content="{i18n:Loc TaskView, CancelCurrentItem}" Command="{Binding DataContext.State.CancelCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" Visibility="{Binding IsRunning, Converter={StaticResource BoolVisibility}}" Margin="0"/>
                                         </StackPanel>
                                         <StackPanel><TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="{Binding StatusText}" Margin="0,5,0,0"/></StackPanel>
                                     </DockPanel>
                                     <StackPanel Visibility="{Binding IsRunning, Converter={StaticResource BoolVisibility}}" Margin="0,12,0,0">
-                                        <DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding ProgressText}"/><TextBlock Text="整体进度" FontWeight="SemiBold"/></DockPanel>
+                                        <DockPanel><TextBlock DockPanel.Dock="Right" Text="{Binding ProgressText}"/><TextBlock Text="{i18n:Loc TaskView, OverallProgress}" FontWeight="SemiBold"/></DockPanel>
                                         <ProgressBar x:Name="OverallProgress" Value="{Binding Progress}" IsIndeterminate="{Binding IsIndeterminate}" Maximum="100" Height="6" Margin="0,8,0,6" Foreground="{StaticResource Accent}"/>
                                         <TextBlock Text="{Binding CurrentItem}" TextWrapping="Wrap" FontSize="12"/>
                                     </StackPanel>
                                     <TextBlock Text="{Binding Error}" TextWrapping="Wrap" Foreground="{StaticResource DangerBrush}" Margin="0,8,0,0">
                                         <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding Error}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
                                     </TextBlock>
-                                    <Expander Header="详细进度" IsExpanded="{Binding IsExpanded}" Visibility="{Binding HasStarted, Converter={StaticResource BoolVisibility}}" Margin="0,8,0,0">
+                                    <Expander Header="{i18n:Loc TaskView, DetailedProgress}" IsExpanded="{Binding IsExpanded}" Visibility="{Binding HasStarted, Converter={StaticResource BoolVisibility}}" Margin="0,8,0,0">
                                         <StackPanel>
                                             <ItemsControl ItemsSource="{Binding Steps}" Margin="0,8,0,0">
                                                 <ItemsControl.ItemTemplate>
@@ -65,7 +65,7 @@
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
-                                            <Expander Header="运行日志" Margin="0,4,0,0"><ListBox ItemsSource="{Binding Logs}" Height="140" Margin="0,8,0,0" FontFamily="Consolas" FontSize="12" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Auto"/></Expander>
+                                            <Expander Header="{i18n:Loc TaskView, RuntimeLogs}" Margin="0,4,0,0"><ListBox ItemsSource="{Binding Logs}" Height="140" Margin="0,8,0,0" FontFamily="Consolas" FontSize="12" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Auto"/></Expander>
                                         </StackPanel>
                                     </Expander>
                                 </StackPanel>

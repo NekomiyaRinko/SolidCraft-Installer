@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Refresh" xml:space="preserve"><value>刷新</value></data>
+  <data name="Heading" xml:space="preserve"><value>我的实例</value></data>
+  <data name="MinecraftVersionFormat" xml:space="preserve"><value>Minecraft {0}</value></data>
+  <data name="NoInstances" xml:space="preserve"><value>还没有实例</value></data>
+  <data name="CreateFirstInstanceHint" xml:space="preserve"><value>安装 Minecraft，创建第一个实例。</value></data>
+  <data name="DownloadGame" xml:space="preserve"><value>下载游戏</value></data>
+  <data name="InstanceDetails" xml:space="preserve"><value>实例详情</value></data>
+  <data name="ResumeModpack" xml:space="preserve"><value>继续导入 / 补齐文件</value></data>
+  <data name="ManageLoader" xml:space="preserve"><value>管理加载器</value></data>
+  <data name="OpenFolder" xml:space="preserve"><value>打开文件夹</value></data>
+  <data name="DeleteInstance" xml:space="preserve"><value>删除实例</value></data>
+</root>

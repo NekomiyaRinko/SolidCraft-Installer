@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.ComponentModel;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -9,15 +10,15 @@ public static class DiagnosticText
     private static readonly TimeSpan MatchTimeout = TimeSpan.FromSeconds(1);
 
     public static string Address(Uri uri) => uri.IsAbsoluteUri
-        ? uri.GetComponents(UriComponents.SchemeAndServer | UriComponents.Path, UriFormat.UriEscaped) : "[relative URI]";
+        ? uri.GetComponents(UriComponents.SchemeAndServer | UriComponents.Path, UriFormat.UriEscaped) : Text.Get("DiagnosticText", "RelativeUri");
 
     public static string Redact(string text)
     {
-        if (text.Length > 65536) text = text[..65536] + " [truncated]";
+        if (text.Length > 65536) text = Text.Format("DiagnosticText", "Truncated", text[..65536]);
         try
         {
             text = Regex.Replace(text, "https?://[^\\s\"'<>]+", match =>
-                Uri.TryCreate(match.Value, UriKind.Absolute, out var uri) ? Address(uri) : "[redacted URL]",
+                Uri.TryCreate(match.Value, UriKind.Absolute, out var uri) ? Address(uri) : Text.Get("DiagnosticText", "RedactedUrl"),
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, MatchTimeout);
             text = Regex.Replace(text,
                 "([?&](?:sign|signature|token|access[_-]?token|refresh[_-]?token|key|apikey|auth|expires|x-amz-[^=&#\\s]+))=[^&\\s#]*",
@@ -40,10 +41,10 @@ public static class DiagnosticText
             }
             return text;
         }
-        catch (RegexMatchTimeoutException) { return "[诊断文本无法安全脱敏，已省略]"; }
+        catch (RegexMatchTimeoutException) { return Text.Get("DiagnosticText", "RedactionFailed"); }
     }
 
-    public static string Summary(Exception error) => Redact(string.Join(" → ", Enumerate(error).Take(8)
+    public static string Summary(Exception error) => Redact(string.Join(Text.Get("DiagnosticText", "ExceptionSeparator"), Enumerate(error).Take(8)
         .Select(x => x.Message).Distinct()));
 
     public static string ExceptionDetails(Exception error)

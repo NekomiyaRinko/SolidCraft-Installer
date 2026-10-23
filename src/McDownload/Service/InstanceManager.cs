@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -59,7 +60,7 @@ public sealed class InstanceManager : IInstanceManager
             catch (DirectoryNotFoundException) { }
         }
         if (result.Select(x => x.Id).Distinct().Count() != result.Count)
-            throw new InstanceConflictException("实例标识重复。");
+            throw new InstanceConflictException(Text.Get("InstanceManager", "DuplicateInstanceId"));
         return result.OrderBy(x => x.Editable.DisplayName, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
@@ -78,13 +79,13 @@ public sealed class InstanceManager : IInstanceManager
         ValidateName(request.MinecraftVersionId);
         ValidateEditable(request.Editable);
         if (request.IsolationPolicy != IsolationPolicy.PerInstance)
-            throw new InstanceValidationException("仅支持各实例独立的隔离策略。");
+            throw new InstanceValidationException(Text.Get("InstanceManager", "IsolationUnsupported"));
 
         await using var lease = await LockAsync("root", cancellationToken);
         string directory = Child(_versions, request.DirectoryName);
         if (Directory.EnumerateFileSystemEntries(Extended(_versions))
             .Any(x => string.Equals(Path.GetFileName(Normal(x)), request.DirectoryName, StringComparison.OrdinalIgnoreCase)))
-            throw new InstanceConflictException("实例目录已经存在。");
+            throw new InstanceConflictException(Text.Get("InstanceManager", "DirectoryExists"));
 
         cancellationToken.ThrowIfCancellationRequested();
         foreach (string relative in new[] { "", "mods", "saves", "config", "logs", ".launcher/patches", ".launcher/work" })
@@ -143,8 +144,8 @@ public sealed class InstanceManager : IInstanceManager
             }
         }
         names.Sort(StringComparer.OrdinalIgnoreCase);
-        string message = $"将回收实例“{metadata.Editable.DisplayName}”的整个目录，包括模组、存档和配置。";
-        if (names.Count > 0) message += "将删除的存档：" + string.Join("、", names) + "。";
+        string message = Text.Format("InstanceManager", "RecycleConfirmation", metadata.Editable.DisplayName);
+        if (names.Count > 0) message += Text.Format("InstanceManager", "DeletedSaves", string.Join(Text.Get("Common", "NameSeparator"), names));
         if (!request.UserDataDeletionConfirmed)
         {
             var error = new UserConfirmationRequiredException(message);
@@ -192,7 +193,7 @@ public sealed class InstanceManager : IInstanceManager
 
     internal async Task<string> FindDirectoryAsync(InstanceId id, CancellationToken token)
     {
-        if (id.Value == Guid.Empty) throw new InstanceValidationException("实例标识为空。");
+        if (id.Value == Guid.Empty) throw new InstanceValidationException(Text.Get("InstanceManager", "InstanceIdEmpty"));
         string? found = null;
         foreach (string entry in Directory.EnumerateDirectories(Extended(_versions)))
         {
@@ -205,10 +206,10 @@ public sealed class InstanceManager : IInstanceManager
             catch (FileNotFoundException) { continue; }
             catch (DirectoryNotFoundException) { continue; }
             if (metadata.Id != id) continue;
-            if (found is not null) throw new InstanceConflictException("实例标识重复。");
+            if (found is not null) throw new InstanceConflictException(Text.Get("InstanceManager", "DuplicateInstanceId"));
             found = directory;
         }
-        return found ?? throw new InstanceNotFoundException("实例不存在。");
+        return found ?? throw new InstanceNotFoundException(Text.Get("InstanceManager", "InstanceMissing"));
     }
 
     internal Task<FileStream> LockInstanceAsync(InstanceId id, CancellationToken token) => LockAsync(id.Value.ToString("N"), token);
@@ -226,7 +227,7 @@ public sealed class InstanceManager : IInstanceManager
             try { return new FileStream(Extended(path), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
             catch (IOException error) when ((error.HResult & 0xffff) is 32 or 33)
             {
-                if (timer.Elapsed >= _lockTimeout) throw new InstanceConflictException("实例正在被其他操作使用。", error);
+                if (timer.Elapsed >= _lockTimeout) throw new InstanceConflictException(Text.Get("InstanceManager", "InstanceBusy"), error);
                 await Task.Delay(50, token);
             }
         }
@@ -244,7 +245,7 @@ public sealed class InstanceManager : IInstanceManager
         CheckNoReparse(directory);
         var metadata = JsonSerializer.Deserialize<InstanceMetadata>(
             await ReadBytesAsync(Child(directory, "instance.json"), 4 * 1024 * 1024, token), JsonOptions)
-            ?? throw new JsonException("instance.json 内容为空。");
+            ?? throw new JsonException(Text.Get("InstanceManager", "MetadataEmpty"));
         ValidateName(metadata.DirectoryName);
         ValidateName(metadata.DirectoryName + ".json");
         ValidateName(metadata.MinecraftVersionId);
@@ -252,33 +253,33 @@ public sealed class InstanceManager : IInstanceManager
         if (metadata.SchemaVersion != 1 || metadata.Id.Value == Guid.Empty ||
             metadata.IsolationPolicy != IsolationPolicy.PerInstance ||
             !string.Equals(metadata.DirectoryName, Path.GetFileName(Normal(directory)), StringComparison.Ordinal))
-            throw new InstanceValidationException("实例元数据与目录不一致。");
+            throw new InstanceValidationException(Text.Get("InstanceManager", "MetadataDirectoryMismatch"));
         if (metadata.ActivePatchIds is null || metadata.ActivePatchIds.Count > 128 ||
             metadata.ActivePatchIds.Distinct().Count() != metadata.ActivePatchIds.Count ||
             metadata.ActivePatchIds.Any(x => x == Guid.Empty) ||
             (metadata.InstalledLoader is null) != (metadata.LoaderPatchId is null) ||
             (metadata.LoaderPatchId is Guid patch && !metadata.ActivePatchIds.Contains(patch)))
-            throw new InstanceValidationException("实例 patch 引用不合法。");
+            throw new InstanceValidationException(Text.Get("InstanceManager", "InvalidPatchReference"));
         return metadata;
     }
 
     internal static void CheckRevision(InstanceMetadata metadata, InstanceRevision expected)
     {
         if (string.IsNullOrEmpty(expected.Value) || metadata.Revision != expected)
-            throw new InstanceConflictException("实例内容已变化，请重新读取实例。");
+            throw new InstanceConflictException(Text.Get("InstanceManager", "InstanceChanged"));
     }
 
     internal async Task<InstanceMetadata> CommitLockedAsync(string directory, InstanceMetadata metadata,
         Dictionary<string, byte[]> documents, CancellationToken token)
     {
         if (metadata.ActivePatchIds.Count > 128)
-            throw new InstanceValidationException("生效 patch 数量超过上限。");
+            throw new InstanceValidationException(Text.Get("InstanceManager", "TooManyPatches"));
         metadata = metadata with { UpdatedAt = DateTimeOffset.UtcNow };
         foreach (var item in documents)
         {
             ValidateManagedPath(directory, item.Key);
             if (item.Key.Equals("instance.json", StringComparison.OrdinalIgnoreCase) || item.Value.Length > 16 * 1024 * 1024)
-                throw new InstanceValidationException("事务文档不合法。");
+                throw new InstanceValidationException(Text.Get("InstanceManager", "InvalidTransactionDocument"));
         }
         metadata = metadata with { Revision = await ComputeRevisionAsync(directory, metadata, documents, token) };
         var files = new JsonArray();
@@ -307,23 +308,23 @@ public sealed class InstanceManager : IInstanceManager
         if (!File.Exists(Extended(journal))) return;
         var document = await ReadObjectAsync(journal, token, 64 * 1024 * 1024);
         if (document["format"]?.GetValue<int>() != 1 || document["files"] is not JsonArray files || files.Count is < 1 or > 132)
-            throw new IOException("实例事务记录不合法。");
+            throw new IOException(Text.Get("InstanceManager", "InvalidTransactionRecord"));
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (JsonNode? node in files)
         {
-            string relative = node?["path"]?.GetValue<string>() ?? throw new IOException("事务路径缺失。");
+            string relative = node?["path"]?.GetValue<string>() ?? throw new IOException(Text.Get("InstanceManager", "TransactionPathMissing"));
             ValidateManagedPath(directory, relative);
-            if (!seen.Add(relative.Replace('/', '\\'))) throw new IOException("事务路径重复。");
+            if (!seen.Add(relative.Replace('/', '\\'))) throw new IOException(Text.Get("InstanceManager", "DuplicateTransactionPath"));
             string path = Child(directory, relative);
             string? current = File.Exists(Extended(path)) ? await Sha256FileAsync(path, token) : null;
             string? before = node?["before"]?.GetValue<string>();
-            string after = node?["after"]?.GetValue<string>() ?? throw new IOException("事务摘要缺失。");
+            string after = node?["after"]?.GetValue<string>() ?? throw new IOException(Text.Get("InstanceManager", "TransactionHashMissing"));
             byte[] content = Convert.FromBase64String(node?["content"]?.GetValue<string>() ?? "");
             if (!Convert.ToHexString(SHA256.HashData(content)).Equals(after, StringComparison.OrdinalIgnoreCase))
-                throw new IOException("事务内容摘要不一致。");
+                throw new IOException(Text.Get("InstanceManager", "TransactionHashMismatch"));
             if (string.Equals(current, after, StringComparison.OrdinalIgnoreCase)) continue;
             if (!string.Equals(current, before, StringComparison.OrdinalIgnoreCase))
-                throw new InstanceConflictException("受管文件与事务记录不一致。");
+                throw new InstanceConflictException(Text.Get("InstanceManager", "TransactionFileMismatch"));
             await AtomicBytesAsync(path, content, CancellationToken.None);
         }
         File.Delete(Extended(journal));
@@ -360,7 +361,7 @@ public sealed class InstanceManager : IInstanceManager
             value == ".launcher/base.json" ||
             (value.StartsWith(".launcher/patches/", StringComparison.Ordinal) && value.EndsWith(".json", StringComparison.Ordinal) &&
              Guid.TryParseExact(value[18..^5], "N", out _));
-        if (!valid) throw new InstanceValidationException("事务路径不属于受管文档。");
+        if (!valid) throw new InstanceValidationException(Text.Get("InstanceManager", "UnmanagedTransactionPath"));
         _ = Child(directory, relative);
     }
 
@@ -369,7 +370,7 @@ public sealed class InstanceManager : IInstanceManager
         ArgumentNullException.ThrowIfNull(editable);
         if (string.IsNullOrWhiteSpace(editable.DisplayName) || editable.DisplayName.Length > 256 ||
             editable.Description?.Length > 8192 || editable.DisplayName.Any(char.IsControl))
-            throw new InstanceValidationException("实例显示信息不合法。");
+            throw new InstanceValidationException(Text.Get("InstanceManager", "InvalidDisplayInfo"));
         if (!string.IsNullOrWhiteSpace(editable.JavaExecutable)) _ = Normal(editable.JavaExecutable);
     }
 
@@ -377,11 +378,11 @@ public sealed class InstanceManager : IInstanceManager
     {
         if (string.IsNullOrWhiteSpace(name) || name.Length > 255 || name is "." or ".." ||
             name.EndsWith('.') || name.EndsWith(' ') || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-            throw new InstanceValidationException("名称不是有效的 Windows 文件名。");
+            throw new InstanceValidationException(Text.Get("InstanceManager", "InvalidName"));
         string stem = name.Split('.')[0].ToUpperInvariant();
         if (stem is "CON" or "PRN" or "AUX" or "NUL" or "CONIN$" or "CONOUT$" ||
             (stem.Length == 4 && (stem.StartsWith("COM") || stem.StartsWith("LPT")) && "123456789¹²³".Contains(stem[3])))
-            throw new InstanceValidationException("名称是 Windows 保留名称。");
+            throw new InstanceValidationException(Text.Get("InstanceManager", "ReservedName"));
     }
 
     internal static string Normal(string path)
@@ -390,10 +391,10 @@ public sealed class InstanceManager : IInstanceManager
         if (path.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase)) path = @"\\" + path[8..];
         else if (path.StartsWith(@"\\?\", StringComparison.Ordinal)) path = path[4..];
         if (path.StartsWith(@"\\.\", StringComparison.Ordinal) || !Path.IsPathFullyQualified(path))
-            throw new InstanceValidationException("路径必须是完整的 Windows 文件系统路径。");
+            throw new InstanceValidationException(Text.Get("InstanceManager", "AbsolutePathRequired"));
         string value = Path.GetFullPath(path);
         if (value.AsSpan(Path.GetPathRoot(value)!.Length).Contains(':'))
-            throw new InstanceValidationException("路径不能包含备用数据流。");
+            throw new InstanceValidationException(Text.Get("InstanceManager", "AlternateDataStream"));
         return Path.TrimEndingDirectorySeparator(value);
     }
 
@@ -409,12 +410,12 @@ public sealed class InstanceManager : IInstanceManager
     {
         parent = Normal(parent);
         if (string.IsNullOrEmpty(relative) || Path.IsPathRooted(relative))
-            throw new InstanceValidationException("相对路径不合法。");
+            throw new InstanceValidationException(Text.Get("InstanceManager", "InvalidRelativePath"));
         string[] parts = relative.Replace('/', '\\').Split('\\');
         foreach (string part in parts) ValidateName(part);
         string result = Normal(Path.Combine(parent, Path.Combine(parts)));
         if (!result.StartsWith(Path.TrimEndingDirectorySeparator(parent) + "\\", StringComparison.OrdinalIgnoreCase))
-            throw new InstanceValidationException("路径超出目录边界。");
+            throw new InstanceValidationException(Text.Get("InstanceManager", "PathOutsideBoundary"));
         CheckNoReparse(result);
         return result;
     }
@@ -427,7 +428,7 @@ public sealed class InstanceManager : IInstanceManager
             try
             {
                 if ((File.GetAttributes(Extended(current)) & FileAttributes.ReparsePoint) != 0)
-                    throw new InstanceValidationException("受管路径不能包含重解析点。");
+                    throw new InstanceValidationException(Text.Get("InstanceManager", "ReparsePoint"));
             }
             catch (FileNotFoundException) { }
             catch (DirectoryNotFoundException) { }
@@ -464,14 +465,14 @@ public sealed class InstanceManager : IInstanceManager
         int count;
         while ((count = await input.ReadAsync(buffer, token)) > 0)
         {
-            if (output.Length + count > maximum) throw new InvalidDataException("文件超过大小上限。");
+            if (output.Length + count > maximum) throw new InvalidDataException(Text.Get("InstanceManager", "FileTooLarge"));
             output.Write(buffer, 0, count);
         }
         return output.ToArray();
     }
 
     internal static async Task<JsonObject> ReadObjectAsync(string path, CancellationToken token, int maximum = 16 * 1024 * 1024) =>
-        JsonNode.Parse(await ReadBytesAsync(path, maximum, token)) as JsonObject ?? throw new JsonException("JSON 根节点必须是对象。");
+        JsonNode.Parse(await ReadBytesAsync(path, maximum, token)) as JsonObject ?? throw new JsonException(Text.Get("InstanceManager", "JsonObjectRequired"));
 
     internal static Task AtomicBytesAsync(string path, byte[] bytes, CancellationToken token) =>
         AtomicWriteAsync(path, async (output, ct) => await output.WriteAsync(bytes, ct), token);
@@ -529,7 +530,7 @@ public sealed class InstanceManager : IInstanceManager
                 token.ThrowIfCancellationRequested();
                 Marshal.ThrowExceptionForHR(fileOperation.PerformOperations());
                 Marshal.ThrowExceptionForHR(fileOperation.GetAnyOperationsAborted(out bool aborted));
-                if (aborted) throw new IOException("回收操作已取消。");
+                if (aborted) throw new IOException(Text.Get("InstanceManager", "RecycleCanceled"));
                 RequireRecycled(directory);
                 completion.SetResult();
             }
@@ -551,7 +552,7 @@ public sealed class InstanceManager : IInstanceManager
         try { _ = File.GetAttributes(Extended(path)); }
         catch (FileNotFoundException) { return; }
         catch (DirectoryNotFoundException) { return; }
-        throw new IOException("文件或目录未完成回收。");
+        throw new IOException(Text.Get("InstanceManager", "RecycleIncomplete"));
     }
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = true)]

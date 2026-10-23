@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -20,20 +21,20 @@ public partial class ModpackMissingFileViewModel : ObservableObject
         CurseForgeFileResolver.TryGetFileWebsite(uri.GetLeftPart(UriPartial.Authority) + uri.AbsolutePath[..index] + uri.Query + uri.Fragment, id, out _);
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(SelectionStatus))] private string localPath = "";
     [ObservableProperty] private string error = "";
-    public string SelectionStatus => LocalPath.Length == 0 ? "" : "已选择 · 待校验";
+    public string SelectionStatus => LocalPath.Length == 0 ? "" : Text.Get("ModpackResume", "SelectedPendingValidation");
     public ModpackMissingFileViewModel(MissingModpackFile missing, ModpackFile? file)
     { Missing = missing; Name = file?.Path ?? missing.Key; CanChoose = file?.Path is not null; }
     [RelayCommand] private void Browse()
     {
         if (!CanChoose) return;
-        var dialog = new OpenFileDialog { Title = "选择待补齐文件", CheckFileExists = true };
+        var dialog = new OpenFileDialog { Title = Text.Get("ModpackResume", "SelectMissingFile"), CheckFileExists = true };
         if (dialog.ShowDialog(System.Windows.Application.Current.MainWindow) == true) LocalPath = dialog.FileName;
     }
     [RelayCommand] private void OpenWebsite()
     {
         if (!CanOpenWebsite) return;
         try { Process.Start(new ProcessStartInfo(Missing.Website!.AbsoluteUri) { UseShellExecute = true }); }
-        catch (Exception ex) { Error = "下载页面打开失败：" + DiagnosticText.Summary(ex); }
+        catch (Exception ex) { Error = Text.Format("ModpackResume", "DownloadPageOpenFailed", DiagnosticText.Summary(ex)); }
     }
 }
 
@@ -44,7 +45,7 @@ public partial class ModpackResumeViewModel : ObservableObject
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanResume))] private ModpackImportState? importState;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanResume))] private bool isLoading;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanResume))] private bool isQueued;
-    [ObservableProperty] private string title = "继续导入";
+    [ObservableProperty] private string title = Text.Get("ModpackResume", "ResumeImport");
     [ObservableProperty] private string archivePath = "";
     [ObservableProperty] private string status = "";
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasError))] private string error = "";
@@ -64,7 +65,7 @@ public partial class ModpackResumeViewModel : ObservableObject
         var importer = _state.Modpacks;
         try
         {
-            var state = await importer.GetStateAsync(metadata.Id, default) ?? throw new InvalidDataException("实例没有整合包导入记录。");
+            var state = await importer.GetStateAsync(metadata.Id, default) ?? throw new InvalidDataException(Text.Get("ModpackResume", "ImportRecordMissing"));
             if (generation != _generation) return;
             ApplyState(state);
         }
@@ -74,7 +75,7 @@ public partial class ModpackResumeViewModel : ObservableObject
     private void ApplyState(ModpackImportState state)
     {
         ImportState = state; ArchivePath = state.ArchivePath;
-        Status = $"{state.Name} · {state.Version} · {InstanceItem.DescribeImportStatus(state.Status)}";
+        Status = Text.Format("ModpackResume", "ImportSummary", state.Name, state.Version, InstanceItem.DescribeImportStatus(state.Status));
         Error = state.Error ?? "";
         MissingFiles.Clear();
         foreach (var file in state.MissingFiles)
@@ -82,7 +83,7 @@ public partial class ModpackResumeViewModel : ObservableObject
     }
     [RelayCommand] private void BrowseArchive()
     {
-        var dialog = new OpenFileDialog { Title = "重新选择相同的整合包", Filter = "整合包分发文件|*.mrpack;*.zip", CheckFileExists = true };
+        var dialog = new OpenFileDialog { Title = Text.Get("ModpackResume", "SelectSameArchive"), Filter = Text.Get("Common", "ModpackFileFilter"), CheckFileExists = true };
         if (dialog.ShowDialog(System.Windows.Application.Current.MainWindow) == true) ArchivePath = dialog.FileName;
     }
     [RelayCommand] private async Task ResumeAsync()
@@ -101,7 +102,7 @@ public partial class ModpackResumeViewModel : ObservableObject
             bool completed = await LastSubmission;
             if (generation != _generation) return;
             string? failure = completed ? null : submitted?.Error ?? (submitted?.State == QueuedTaskState.Canceled
-                ? "任务已取消，已保留完成文件。" : "未能继续导入，请查看任务队列。");
+                ? Text.Get("ModpackResume", "CanceledFilesRetained") : Text.Get("ModpackResume", "ResumeFailed"));
             var updated = await importer.GetStateAsync(state.InstanceId, default);
             if (generation != _generation) return;
             if (updated is not null) ApplyState(updated);

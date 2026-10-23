@@ -1,3 +1,4 @@
+using McDownload.i18n;
 namespace McDownload.Model;
 
 public enum ModpackFormat { Modrinth, CurseForge }
@@ -42,7 +43,7 @@ public sealed record ModpackImportResult(InstanceMetadata Instance, ModpackImpor
 public sealed record CurseForgeFileResolution(ModpackFile? File, MissingModpackFile? Missing);
 
 public sealed class ModpackFilesRequiredException(ModpackImportResult result)
-    : IOException($"整合包尚有 {result.State.MissingFiles.Count} 项文件待补齐。")
+    : IOException(Text.Format("ModpackContracts", "FilesRequired", result.State.MissingFiles.Count))
 {
     public ModpackImportResult Result { get; } = result;
 }

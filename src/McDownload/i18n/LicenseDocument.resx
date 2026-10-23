@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="EmbeddedLicenseMissing" xml:space="preserve"><value>内嵌许可文件不存在：{0}</value></data>
+  <data name="HmclTerms" xml:space="preserve"><value>HMCL 附加条款</value></data>
+  <data name="SourceNotice" xml:space="preserve"><value>来源与修改声明</value></data>
+  <data name="ThirdPartyNotices" xml:space="preserve"><value>CommunityToolkit.Mvvm · MIT 与第三方声明</value></data>
+  <data name="GplTitle" xml:space="preserve"><value>GNU General Public License v3</value></data>
+</root>

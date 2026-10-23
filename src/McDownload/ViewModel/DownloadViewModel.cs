@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -11,8 +12,8 @@ public partial class DownloadViewModel : ObservableObject
     private readonly SettingsViewModel _settings;
     public ObservableCollection<MinecraftVersionEntry> MinecraftVersions { get; } = new();
     private IReadOnlyList<MinecraftVersionEntry> _allMinecraftVersions = Array.Empty<MinecraftVersionEntry>();
-    public IReadOnlyList<string> Channels { get; } = new[] { "全部", "正式版", "测试版" };
-    [ObservableProperty] private string selectedMinecraftChannel = "正式版";
+    public IReadOnlyList<string> Channels { get; } = new[] { Text.Get("Common", "All"), Text.Get("Common", "Release"), Text.Get("Common", "Snapshot") };
+    [ObservableProperty] private string selectedMinecraftChannel = Text.Get("Common", "Release");
     public LoaderSelectionViewModel NewGameLoader { get; }
     public LoaderSelectionViewModel InstanceLoader { get; }
     public ModpackImportViewModel Modpacks { get; }
@@ -29,17 +30,17 @@ public partial class DownloadViewModel : ObservableObject
     private bool isSubmittingGame;
     public bool IsPageBusy => !IsModpackTab && (IsRefreshingVersions || NewGameLoader.IsLoading || IsSubmittingGame);
     public bool IsPageInteractive => !IsPageBusy;
-    public string PageBusyMessage => IsSubmittingGame ? "正在添加下载任务…" : "正在加载版本列表…";
+    public string PageBusyMessage => IsSubmittingGame ? Text.Get("Download", "AddingTask") : Text.Get("Download", "LoadingVersions");
     internal Task SubmissionFeedback { get; private set; } = Task.CompletedTask;
     [ObservableProperty] private InstanceMetadata? targetInstance;
-    [ObservableProperty] private string currentLoader = "未安装加载器";
+    [ObservableProperty] private string currentLoader = Text.Get("Common", "NoLoaderInstalled");
     [ObservableProperty] private bool isLoaderConfirmationVisible;
     [ObservableProperty] private string confirmationText = "";
     private LoaderState? _loaderState;
     private LoaderReplacementPlan? _plan;
     private bool _remove;
     private long _refreshGeneration;
-    public const string LoaderWarning = "不会删除 mods 文件夹中的模组，但旧模组可能不兼容新加载器。";
+    public static string LoaderWarning => Text.Get("Download", "LoaderWarning");
     public DownloadViewModel(WorkspaceViewModel state, SettingsViewModel settings)
     {
         State = state; _settings = settings;
@@ -73,15 +74,15 @@ public partial class DownloadViewModel : ObservableObject
     {
         string? selected = SelectedMinecraftVersion?.Id;
         MinecraftVersions.Clear();
-        foreach (var version in _allMinecraftVersions.Where(x => SelectedMinecraftChannel == "全部" ||
-            (x.Channel == MinecraftVersionChannel.Release) == (SelectedMinecraftChannel == "正式版"))) MinecraftVersions.Add(version);
+        foreach (var version in _allMinecraftVersions.Where(x => SelectedMinecraftChannel == Text.Get("Common", "All") ||
+            (x.Channel == MinecraftVersionChannel.Release) == (SelectedMinecraftChannel == Text.Get("Common", "Release")))) MinecraftVersions.Add(version);
         SelectedMinecraftVersion = MinecraftVersions.FirstOrDefault(x => x.Id == selected) ?? MinecraftVersions.FirstOrDefault();
     }
     partial void OnTargetInstanceChanged(InstanceMetadata? value)
     {
         _refreshGeneration++;
         _loaderState = null;
-        CurrentLoader = "加载器状态未读取";
+        CurrentLoader = Text.Get("Download", "LoaderStateUnread");
         CancelConfirmation();
         InstanceLoader.MinecraftVersion = value?.MinecraftVersionId ?? "";
     }
@@ -103,13 +104,13 @@ public partial class DownloadViewModel : ObservableObject
             if (generation != _refreshGeneration || TargetInstance?.Id != target.Id) return false;
             TargetInstance = metadata;
             _loaderState = loader;
-            CurrentLoader = _loaderState.InstalledLoader is { } value ? $"{value.Kind} · {value.Version}" : "未安装加载器";
+            CurrentLoader = _loaderState.InstalledLoader is { } value ? Text.Format("Common", "InstalledLoader", DisplayNames.Loader(value.Kind), value.Version) : Text.Get("Common", "NoLoaderInstalled");
             return true;
         }
         catch (Exception ex)
         {
             if (generation == _refreshGeneration && TargetInstance?.Id == target.Id)
-            { CurrentLoader = "加载器状态读取失败"; State.ReportError(CurrentLoader, ex); }
+            { CurrentLoader = Text.Get("Download", "LoaderStateReadFailed"); State.ReportError(CurrentLoader, ex); }
             return false;
         }
     }
@@ -132,7 +133,7 @@ public partial class DownloadViewModel : ObservableObject
                 catch (Exception ex)
                 {
                     if (configuration != State.ConfigurationVersion) continue;
-                    State.ReportError("版本列表获取失败", ex);
+                    State.ReportError(Text.Get("Download", "VersionListFailed"), ex);
                 }
                 return;
             }
@@ -143,7 +144,7 @@ public partial class DownloadViewModel : ObservableObject
     {
         if (IsPageBusy || SelectedMinecraftVersion is null || !NewGameLoader.CanInstall) return;
         LoaderSelection? selection;
-        try { selection = NewGameLoader.GetSelection(); } catch (Exception ex) { State.ReportError("安装参数无效", ex); return; }
+        try { selection = NewGameLoader.GetSelection(); } catch (Exception ex) { State.ReportError(Text.Get("Download", "InvalidInstallArguments"), ex); return; }
         var version = SelectedMinecraftVersion;
         string name = ResolveInstanceName(InstanceName, version.Id, selection);
         string java = _settings.JavaPath;
@@ -159,13 +160,13 @@ public partial class DownloadViewModel : ObservableObject
                 if (selection is not null)
                 {
                     var report = await State.Loaders.ValidateCompatibilityAsync(new(version.Id, selection, java), context.CancellationToken);
-                    if (report.Status != CompatibilityStatus.Compatible) throw new InvalidOperationException(string.Join("；", report.Issues.Select(x => x.Message)));
+                    if (report.Status != CompatibilityStatus.Compatible) throw new InvalidOperationException(string.Join(Text.Get("Common", "IssueSeparator"), report.Issues.Select(x => x.Message)));
                 }
                 var metadata = await State.Instances.CreateAsync(new(name, version.Id, IsolationPolicy.PerInstance,
                     new(name, null, string.IsNullOrWhiteSpace(java) ? null : java)), context.CancellationToken);
                 installed = metadata;
-                State.Log("实例已创建：" + metadata.Editable.DisplayName);
-                State.Log("未完成的下载可在实例中继续。");
+                State.Log(Text.Format("Download", "InstanceCreated", metadata.Editable.DisplayName));
+                State.Log(Text.Get("Download", "ResumeDownloadHint"));
                 installed = await State.Games.InstallAsync(metadata.Id, version, selection is null ? context : context with
                 {
                     Progress = new MappedProgress(context.Progress, p => p.Step == OperationStep.Saving
@@ -174,7 +175,7 @@ public partial class DownloadViewModel : ObservableObject
                 if (selection is not null)
                 {
                     context.Progress?.Report(new(context.OperationId, installed.Id, 0, OperationStage.InstallingLoader,
-                        null, null, 0, null, "正在安装 " + selection.Kind, OperationStep.Loader));
+                        null, null, 0, null, Text.Format("Download", "InstallingLoader", DisplayNames.Loader(selection.Kind)), OperationStep.Loader));
                     await State.Loaders.InstallAsync(new(installed.Id, installed.Revision, selection, java), LoaderContext(context));
                 }
             }, GameSteps(selection));
@@ -195,11 +196,11 @@ public partial class DownloadViewModel : ObservableObject
     {
         var steps = new List<(OperationStep, string)>
         {
-            (OperationStep.Preparing, "准备实例"), (OperationStep.Client, "下载客户端"),
-            (OperationStep.Libraries, "下载依赖库"), (OperationStep.Assets, "下载资源文件")
+            (OperationStep.Preparing, Text.Get("Download", "PrepareInstance")), (OperationStep.Client, Text.Get("Common", "DownloadClient")),
+            (OperationStep.Libraries, Text.Get("Common", "DownloadLibraries")), (OperationStep.Assets, Text.Get("Common", "DownloadAssets"))
         };
-        if (loader is not null) steps.Add((OperationStep.Loader, "安装 " + loader.Kind));
-        steps.Add((OperationStep.Saving, "保存实例"));
+        if (loader is not null) steps.Add((OperationStep.Loader, Text.Format("Download", "InstallLoader", DisplayNames.Loader(loader.Kind))));
+        steps.Add((OperationStep.Saving, Text.Get("Download", "SaveInstance")));
         return steps;
     }
 
@@ -224,7 +225,7 @@ public partial class DownloadViewModel : ObservableObject
         var target = TargetInstance;
         long configuration = State.ConfigurationVersion;
         InstanceMetadata? installed = null;
-        await State.EnqueueAsync(target.Editable.DisplayName + " · 下载 / 校验原版游戏", async context =>
+        await State.EnqueueAsync(Text.Format("Download", "ResumeGameTitle", target.Editable.DisplayName), async context =>
         {
             var manifest = await State.Versions.GetManifestAsync(context.CancellationToken);
             var version = manifest.Versions.First(x => x.Id == target.MinecraftVersionId);
@@ -236,41 +237,41 @@ public partial class DownloadViewModel : ObservableObject
     [RelayCommand] private void RequestRemove()
     {
         if (State.IsBusy || _loaderState?.InstalledLoader is null || _loaderState.InstanceId != TargetInstance?.Id) return;
-        _remove = true; _plan = null; ConfirmationText = "删除当前加载器？"; IsLoaderConfirmationVisible = true;
+        _remove = true; _plan = null; ConfirmationText = Text.Get("Download", "RemoveLoaderConfirmation"); IsLoaderConfirmationVisible = true;
     }
     [RelayCommand(AllowConcurrentExecutions = true)] private async Task InstallLoaderAsync()
     {
         if (TargetInstance is null) return;
         LoaderSelection? selection;
-        try { selection = InstanceLoader.GetSelection() ?? throw new ArgumentException("请选择 Forge、Fabric 或 NeoForge。"); }
-        catch (Exception ex) { State.ReportError("加载器选择无效", ex); return; }
+        try { selection = InstanceLoader.GetSelection() ?? throw new ArgumentException(Text.Get("Download", "SelectLoader")); }
+        catch (Exception ex) { State.ReportError(Text.Get("Download", "InvalidLoaderSelection"), ex); return; }
         var target = TargetInstance;
         var targetId = target.Id;
         string java = _settings.JavaPath;
         long configuration = State.ConfigurationVersion;
         if (target.InstalledLoader is not null)
         {
-            if (State.IsBusy) { State.Error = "请等待任务队列结束后更换加载器。"; return; }
+            if (State.IsBusy) { State.Error = Text.Get("Download", "WaitForQueue"); return; }
             if (!await RefreshLoaderAsync() || _loaderState is null || TargetInstance?.Id != targetId) return;
             var loader = _loaderState;
-            await State.RunAsync("正在检查加载器兼容性…", async context =>
+            await State.RunAsync(Text.Get("Download", "CheckingCompatibility"), async context =>
             {
                 var prepared = await State.Loaders.PrepareReplacementAsync(new(targetId, loader.Revision, selection, java), context.CancellationToken);
                 if (TargetInstance?.Id != targetId || _loaderState != loader || InstanceLoader.GetSelection() != selection)
-                    throw new InvalidOperationException("实例或加载器选择已变化，请重新检查。");
+                    throw new InvalidOperationException(Text.Get("Download", "SelectionChanged"));
                 _plan = prepared;
                 if (_plan.Compatibility.Status != CompatibilityStatus.Compatible)
-                    throw new InvalidOperationException(string.Join("；", _plan.Compatibility.Issues.Select(x => x.Message)));
-                _remove = false; ConfirmationText = $"将 {CurrentLoader} 更换为 {selection.Kind} {selection.Version}？";
+                    throw new InvalidOperationException(string.Join(Text.Get("Common", "IssueSeparator"), _plan.Compatibility.Issues.Select(x => x.Message)));
+                _remove = false; ConfirmationText = Text.Format("Download", "ReplacementConfirmation", CurrentLoader, DisplayNames.Loader(selection.Kind), selection.Version);
                 IsLoaderConfirmationVisible = true;
             });
             return;
         }
-        await State.EnqueueAsync(target.Editable.DisplayName + " · 安装 " + selection.Kind, context => State.Loaders.InstallAsync(
+        await State.EnqueueAsync(Text.Format("Download", "InstallLoaderTitle", target.Editable.DisplayName, DisplayNames.Loader(selection.Kind)), context => State.Loaders.InstallAsync(
             new(targetId, target.Revision, selection, java), LoaderContext(context)), new[]
             {
-                (OperationStep.Preparing, "检查实例"), (OperationStep.Loader, "安装 " + selection.Kind),
-                (OperationStep.Saving, "保存实例")
+                (OperationStep.Preparing, Text.Get("Download", "CheckInstance")), (OperationStep.Loader, Text.Format("Download", "InstallLoader", DisplayNames.Loader(selection.Kind))),
+                (OperationStep.Saving, Text.Get("Download", "SaveInstance"))
             });
         if (configuration == State.ConfigurationVersion && TargetInstance?.Id == targetId) await RefreshLoaderAsync();
     }
@@ -280,8 +281,8 @@ public partial class DownloadViewModel : ObservableObject
         IsLoaderConfirmationVisible = false;
         var state = _loaderState; var plan = _plan; bool remove = _remove;
         if (!remove && (plan is null || plan.CurrentState != state || plan.Request.InstanceId != TargetInstance.Id))
-        { CancelConfirmation(); State.Error = "更换计划已失效，请重新检查加载器。"; return; }
-        await State.RunAsync(remove ? "正在删除加载器…" : "正在更换加载器…", async context =>
+        { CancelConfirmation(); State.Error = Text.Get("Download", "ReplacementExpired"); return; }
+        await State.RunAsync(remove ? Text.Get("Download", "RemovingLoader") : Text.Get("Download", "ReplacingLoader"), async context =>
         {
             if (remove && state.LoaderPatchId is { } patch)
                 await State.Loaders.RemoveAsync(new(state.InstanceId, state.Revision, patch), context);

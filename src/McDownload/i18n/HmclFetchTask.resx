@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="DownloadAddressMissing" xml:space="preserve"><value>没有可用的下载地址：{0}</value></data>
+  <data name="DownloadHashMismatch" xml:space="preserve"><value>下载文件 SHA-1 校验失败。</value></data>
+  <data name="DownloadSizeMismatch" xml:space="preserve"><value>下载文件大小不一致。</value></data>
+  <data name="DownloadTooLarge" xml:space="preserve"><value>下载文件超过大小上限。</value></data>
+  <data name="InvalidDownloadSize" xml:space="preserve"><value>下载文件大小超出允许范围。</value></data>
+  <data name="RequestTimeout" xml:space="preserve"><value>下载请求超时：{0}</value></data>
+  <data name="ResponseTooLarge" xml:space="preserve"><value>响应超过大小上限。</value></data>
+  <data name="HttpFailed" xml:space="preserve"><value>HTTP {0} ({1})：{2}</value></data>
+</root>

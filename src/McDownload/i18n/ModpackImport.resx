@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="ArchiveReadFailed" xml:space="preserve"><value>整合包读取失败：{0}</value></data>
+  <data name="ArchiveReadLog" xml:space="preserve"><value>整合包读取失败</value></data>
+  <data name="CheckingAccess" xml:space="preserve"><value>正在检查 CurseForge 文件访问权限…</value></data>
+  <data name="CredentialConfigured" xml:space="preserve"><value>已配置 CurseForge 应用 API key，安装前将验证文件访问权限；限制自动下载的文件仍需手动补齐。</value></data>
+  <data name="CredentialMissing" xml:space="preserve"><value>尚未配置 CurseForge 应用 API key，请先前往设置配置；限制自动下载的文件仍需手动补齐。</value></data>
+  <data name="DuplicateInstanceName" xml:space="preserve"><value>实例名称已存在或已排队，请使用其他名称。</value></data>
+  <data name="FileCounts" xml:space="preserve"><value>{0} 个清单文件 · {1} 个覆盖文件</value></data>
+  <data name="NoLoaderInstallation" xml:space="preserve"><value>不安装加载器</value></data>
+  <data name="PackVersion" xml:space="preserve"><value>整合包版本 {0}</value></data>
+  <data name="QueueUnavailable" xml:space="preserve"><value>任务队列暂不可用，未添加任务；请等待凭据应用完成后重试。</value></data>
+  <data name="SelectArchive" xml:space="preserve"><value>选择整合包</value></data>
+  <data name="SelectInstallerJava" xml:space="preserve"><value>选择安装器 Java</value></data>
+  <data name="SelectSingleArchive" xml:space="preserve"><value>请一次选择一个 .mrpack 或 CurseForge .zip 分发包。</value></data>
+  <data name="TaskAdded" xml:space="preserve"><value>「{0}」已加入下载队列。</value></data>
+  <data name="LoaderVersion" xml:space="preserve"><value>{0} {1}</value></data>
+</root>

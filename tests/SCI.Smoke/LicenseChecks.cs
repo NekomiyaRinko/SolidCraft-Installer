@@ -25,7 +25,7 @@ internal static class LicenseChecks
         var about = Find<AboutView>(owner).Single();
         var settings = Find<SettingsView>(owner).Single();
         var labels = Find<TextBlock>(about).Select(x => x.Text).ToArray();
-        check(model.ProductVersion == "0.4.1a" && ((TextBlock)about.FindName("ProductVersionLabel")).Text == "版本 0.4.1a",
+        check(model.ProductVersion == "0.5.0" && ((TextBlock)about.FindName("ProductVersionLabel")).Text == "版本 0.5.0",
             "about version is bound to the application informational version");
         check(labels.Any(x => x.Contains("2020–2026 huangyuhui and HMCL contributors")) &&
             labels.Any(x => x.Contains("Copyright © 2026 NekomiyaRinko.")), "about preserves both copyright notices at the same level");

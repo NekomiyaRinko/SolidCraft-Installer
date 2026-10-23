@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -23,8 +24,8 @@ public sealed class InstalledVersionScanner(InstanceManager instances)
                 if (File.Exists(InstanceManager.Extended(metadataFile)))
                 {
                     var raw = JsonSerializer.Deserialize<InstanceMetadata>(await InstanceManager.ReadBytesAsync(metadataFile,
-                        4 * 1024 * 1024, token), InstanceManager.JsonOptions) ?? throw new JsonException("实例元数据为空。");
-                    if (raw.Id.Value == Guid.Empty) throw new InstanceValidationException("实例标识为空。");
+                        4 * 1024 * 1024, token), InstanceManager.JsonOptions) ?? throw new JsonException(Text.Get("InstalledVersionScanner", "MetadataEmpty"));
+                    if (raw.Id.Value == Guid.Empty) throw new InstanceValidationException(Text.Get("InstalledVersionScanner", "InstanceIdEmpty"));
                     await using var lease = await instances.LockInstanceAsync(raw.Id, token);
                     var managed = await instances.ReadLockedAsync(directory, token);
                     result.Add(new(managed.Editable.DisplayName, directory, managed.MinecraftVersionId,
@@ -40,10 +41,10 @@ public sealed class InstalledVersionScanner(InstanceManager instances)
                 while (true)
                 {
                     if (visited.Count >= 64 || !visited.Add(current))
-                    { warning = "版本继承存在循环或超过深度上限。"; break; }
+                    { warning = Text.Get("InstalledVersionScanner", "InheritanceCycleOrDepth"); break; }
                     string parentFile = InstanceManager.Child(versions, current + "/" + current + ".json");
                     if (!File.Exists(InstanceManager.Extended(parentFile)))
-                    { warning = "缺少本地父版本：" + current; break; }
+                    { warning = Text.Format("InstalledVersionScanner", "ParentMissing", current); break; }
                     var json = await InstanceManager.ReadObjectAsync(parentFile, token);
                     documents.Add(json);
                     if (json["inheritsFrom"]?.GetValue<string>() is not { Length: > 0 } parent) break;
@@ -56,17 +57,17 @@ public sealed class InstalledVersionScanner(InstanceManager instances)
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException
                 or InstanceValidationException or InstanceConflictException or InvalidOperationException or ArgumentException)
             {
-                result.Add(new(name, directory, "未识别", "加载器信息不可用", null, "版本读取失败：" + ex.Message));
+                result.Add(new(name, directory, Text.Get("InstalledVersionScanner", "Unrecognized"), Text.Get("InstalledVersionScanner", "LoaderUnavailable"), null, Text.Format("InstalledVersionScanner", "ReadFailed", ex.Message)));
             }
         }
         var duplicates = result.Where(x => x.Metadata is not null).GroupBy(x => x.Metadata!.Id).Where(x => x.Count() > 1)
             .Select(x => x.Key).ToHashSet();
         return result.Select(x => x.Metadata is not null && duplicates.Contains(x.Metadata.Id)
-            ? x with { Metadata = null, Warning = "实例标识重复，已禁止修改。" } : x)
+            ? x with { Metadata = null, Warning = Text.Get("InstalledVersionScanner", "DuplicateInstanceId") } : x)
             .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
-    private static string Describe(LoaderSelection? loader) => loader is null ? "未安装加载器" : $"{loader.Kind} · {loader.Version}";
+    private static string Describe(LoaderSelection? loader) => loader is null ? Text.Get("Common", "NoLoaderInstalled") : Text.Format("Common", "InstalledLoader", DisplayNames.Loader(loader.Kind), loader.Version);
 
     private static (string? Minecraft, LoaderSelection? Loader) Detect(IReadOnlyList<JsonObject> documents)
     {

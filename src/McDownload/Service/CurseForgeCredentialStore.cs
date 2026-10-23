@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -37,7 +38,7 @@ public sealed class CurseForgeCredentialStore(string path)
     {
         key = key.Trim();
         if (key.Length is < 1 or > 1024 || key.Any(x => x < '!' || x > '~'))
-            throw new ArgumentException("请输入有效的 CurseForge 应用 API key，不要包含空格或换行。");
+            throw new ArgumentException(Text.Get("CurseForgeCredentialStore", "InvalidApiKey"));
         return key;
     }
 }

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="AbsolutePathRequired" xml:space="preserve"><value>路径必须是完整的 Windows 文件系统路径。</value></data>
+  <data name="AlternateDataStream" xml:space="preserve"><value>路径不能包含备用数据流。</value></data>
+  <data name="DeletedSaves" xml:space="preserve"><value>将删除的存档：{0}。</value></data>
+  <data name="DirectoryExists" xml:space="preserve"><value>实例目录已经存在。</value></data>
+  <data name="DuplicateInstanceId" xml:space="preserve"><value>实例标识重复。</value></data>
+  <data name="DuplicateTransactionPath" xml:space="preserve"><value>事务路径重复。</value></data>
+  <data name="FileTooLarge" xml:space="preserve"><value>文件超过大小上限。</value></data>
+  <data name="InstanceBusy" xml:space="preserve"><value>实例正在被其他操作使用。</value></data>
+  <data name="InstanceChanged" xml:space="preserve"><value>实例内容已变化，请重新读取实例。</value></data>
+  <data name="InstanceIdEmpty" xml:space="preserve"><value>实例标识为空。</value></data>
+  <data name="InstanceMissing" xml:space="preserve"><value>实例不存在。</value></data>
+  <data name="InvalidDisplayInfo" xml:space="preserve"><value>实例显示信息不合法。</value></data>
+  <data name="InvalidName" xml:space="preserve"><value>名称不是有效的 Windows 文件名。</value></data>
+  <data name="InvalidPatchReference" xml:space="preserve"><value>实例 patch 引用不合法。</value></data>
+  <data name="InvalidRelativePath" xml:space="preserve"><value>相对路径不合法。</value></data>
+  <data name="InvalidTransactionDocument" xml:space="preserve"><value>事务文档不合法。</value></data>
+  <data name="InvalidTransactionRecord" xml:space="preserve"><value>实例事务记录不合法。</value></data>
+  <data name="IsolationUnsupported" xml:space="preserve"><value>仅支持各实例独立的隔离策略。</value></data>
+  <data name="JsonObjectRequired" xml:space="preserve"><value>JSON 根节点必须是对象。</value></data>
+  <data name="MetadataDirectoryMismatch" xml:space="preserve"><value>实例元数据与目录不一致。</value></data>
+  <data name="MetadataEmpty" xml:space="preserve"><value>instance.json 内容为空。</value></data>
+  <data name="PathOutsideBoundary" xml:space="preserve"><value>路径超出目录边界。</value></data>
+  <data name="RecycleCanceled" xml:space="preserve"><value>回收操作已取消。</value></data>
+  <data name="RecycleConfirmation" xml:space="preserve"><value>将回收实例“{0}”的整个目录，包括模组、存档和配置。</value></data>
+  <data name="RecycleIncomplete" xml:space="preserve"><value>文件或目录未完成回收。</value></data>
+  <data name="ReparsePoint" xml:space="preserve"><value>受管路径不能包含重解析点。</value></data>
+  <data name="ReservedName" xml:space="preserve"><value>名称是 Windows 保留名称。</value></data>
+  <data name="TooManyPatches" xml:space="preserve"><value>生效 patch 数量超过上限。</value></data>
+  <data name="TransactionFileMismatch" xml:space="preserve"><value>受管文件与事务记录不一致。</value></data>
+  <data name="TransactionHashMismatch" xml:space="preserve"><value>事务内容摘要不一致。</value></data>
+  <data name="TransactionHashMissing" xml:space="preserve"><value>事务摘要缺失。</value></data>
+  <data name="TransactionPathMissing" xml:space="preserve"><value>事务路径缺失。</value></data>
+  <data name="UnmanagedTransactionPath" xml:space="preserve"><value>事务路径不属于受管文档。</value></data>
+</root>

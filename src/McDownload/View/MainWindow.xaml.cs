@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using McDownload.i18n;
 using McDownload.ViewModel;
 namespace McDownload.View;
 public partial class MainWindow : Window
@@ -62,7 +63,7 @@ public partial class MainWindow : Window
         CommitSettingsInput();
         e.Effects = ModpackImportViewModel.AcceptsFiles(paths) ? DragDropEffects.Copy : DragDropEffects.None;
         try { await (DropImport = _model.ImportDroppedFilesAsync(paths)); }
-        catch (Exception ex) { _model?.State.ReportError("整合包拖入失败", ex); }
+        catch (Exception ex) { _model?.State.ReportError(Text.Get("MainWindowView", "ModpackDropFailed"), ex); }
     }
 
     private void InstancesChanged(object? sender, PropertyChangedEventArgs e)

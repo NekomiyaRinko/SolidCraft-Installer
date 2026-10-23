@@ -8,8 +8,8 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>SCI</AssemblyName>
     <Product>SolidCraft Installer</Product>
-    <Version>0.4.1</Version>
-    <InformationalVersion>0.4.1a</InformationalVersion>
+    <Version>0.5.0</Version>
+    <InformationalVersion>0.5.0</InformationalVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />

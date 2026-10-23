@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="DeletePreparationFailed" xml:space="preserve"><value>实例删除准备失败</value></data>
+  <data name="DirectoryOpenFailed" xml:space="preserve"><value>实例目录打开失败</value></data>
+  <data name="ImportCanceled" xml:space="preserve"><value>已取消，可继续</value></data>
+  <data name="ImportFailed" xml:space="preserve"><value>导入失败，可继续</value></data>
+  <data name="ImportIncomplete" xml:space="preserve"><value>导入未完成</value></data>
+  <data name="IsolatedData" xml:space="preserve"><value>模组与存档独立</value></data>
+  <data name="ListReadFailed" xml:space="preserve"><value>实例列表读取失败</value></data>
+  <data name="ManagedIsolation" xml:space="preserve"><value>SCI 实例 · 模组与存档独立</value></data>
+  <data name="ModpackStateReadFailed" xml:space="preserve"><value>整合包状态读取失败：{0}</value></data>
+  <data name="ModpackStatus" xml:space="preserve"><value>整合包 · {0}</value></data>
+  <data name="NeedsFiles" xml:space="preserve"><value>待补齐文件</value></data>
+  <data name="ReadOnlyDetails" xml:space="preserve"><value>非 SCI 创建的版本，仅查看信息和打开文件夹。</value></data>
+  <data name="ReadOnlyVersion" xml:space="preserve"><value>已有版本 · 只读</value></data>
+  <data name="RecyclingInstance" xml:space="preserve"><value>正在回收实例…</value></data>
+</root>

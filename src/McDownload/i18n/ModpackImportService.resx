@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="ApplyOverrides" xml:space="preserve"><value>应用覆盖文件</value></data>
+  <data name="ArchiveChanged" xml:space="preserve"><value>整合包在预览后发生变化，请重新选择。</value></data>
+  <data name="CheckPack" xml:space="preserve"><value>检查整合包</value></data>
+  <data name="ClientHashMismatch" xml:space="preserve"><value>实例客户端摘要校验失败。</value></data>
+  <data name="CompletedGameFilesMissing" xml:space="preserve"><value>已完成的游戏安装文件缺失，请先修复实例。</value></data>
+  <data name="DownloadPackFiles" xml:space="preserve"><value>下载整合包文件</value></data>
+  <data name="DuplicateTargetPath" xml:space="preserve"><value>多个下载文件使用相同目标路径。</value></data>
+  <data name="ExistingFileConflict" xml:space="preserve"><value>整合包目标文件已经存在，未覆盖：{0}</value></data>
+  <data name="FileResolutionFailed" xml:space="preserve"><value>无法解析 CurseForge 文件。</value></data>
+  <data name="FilesStillRequired" xml:space="preserve"><value>整合包仍有 {0} 项文件待补齐</value></data>
+  <data name="FileVerified" xml:space="preserve"><value>文件已校验：{0}</value></data>
+  <data name="FinalFileHashMismatch" xml:space="preserve"><value>整合包文件最终校验失败：{0}</value></data>
+  <data name="GameInstalled" xml:space="preserve"><value>游戏本体已安装</value></data>
+  <data name="ImportCompleted" xml:space="preserve"><value>整合包导入完成</value></data>
+  <data name="ImportRecordEmpty" xml:space="preserve"><value>整合包导入记录为空。</value></data>
+  <data name="ImportRecordMismatch" xml:space="preserve"><value>整合包与实例导入记录不一致。</value></data>
+  <data name="ImportRecordMissing" xml:space="preserve"><value>实例没有整合包导入记录。</value></data>
+  <data name="InstallingFile" xml:space="preserve"><value>安装文件：{0}</value></data>
+  <data name="InstallLoader" xml:space="preserve"><value>安装加载器</value></data>
+  <data name="InvalidImportRecord" xml:space="preserve"><value>整合包导入记录不合法。</value></data>
+  <data name="InvalidLocalFiles" xml:space="preserve"><value>本地补齐包含未知或未选择的文件。</value></data>
+  <data name="InvalidOptionalSelection" xml:space="preserve"><value>整合包可选文件选择无效。</value></data>
+  <data name="LoaderCompleted" xml:space="preserve"><value>加载器处理完成</value></data>
+  <data name="LoaderMismatch" xml:space="preserve"><value>实例加载器与整合包不一致。</value></data>
+  <data name="LoaderRemoved" xml:space="preserve"><value>整合包加载器已被移除。</value></data>
+  <data name="ManualFileRequired" xml:space="preserve"><value>需要手动下载并提供本地文件。</value></data>
+  <data name="MinecraftVersionMissing" xml:space="preserve"><value>整合包指定的 Minecraft 版本不存在。</value></data>
+  <data name="ModifiedFileConflict" xml:space="preserve"><value>整合包文件已修改或丢失，未覆盖：{0}</value></data>
+  <data name="OperationIdEmpty" xml:space="preserve"><value>操作标识不能为空。</value></data>
+  <data name="OverrideMissing" xml:space="preserve"><value>覆盖文件缺失。</value></data>
+  <data name="PackChecked" xml:space="preserve"><value>整合包检查完成</value></data>
+  <data name="PrecheckFailed" xml:space="preserve"><value>CurseForge 文件元数据预检查失败：{0}；{1}</value></data>
+  <data name="PrecheckingFiles" xml:space="preserve"><value>预检查 CurseForge 文件 {0}/{1}</value></data>
+  <data name="RecoveryFileConflict" xml:space="preserve"><value>未完成的文件提交存在内容冲突：{0}</value></data>
+  <data name="ResolvedFileMismatch" xml:space="preserve"><value>CurseForge 文件解析结果与清单不一致。</value></data>
+  <data name="ResolvingFiles" xml:space="preserve"><value>解析整合包文件</value></data>
+  <data name="ResumeArchiveMismatch" xml:space="preserve"><value>继续导入必须使用内容相同的分发包。</value></data>
+  <data name="SavedFileMismatch" xml:space="preserve"><value>已保存的文件信息与清单不一致。</value></data>
+  <data name="UnexpectedLoader" xml:space="preserve"><value>未完成的游戏安装包含意外加载器。</value></data>
+  <data name="VerifyingResult" xml:space="preserve"><value>校验整合包安装结果</value></data>
+  <data name="VerifyPack" xml:space="preserve"><value>校验整合包</value></data>
+  <data name="WrittenFileMismatch" xml:space="preserve"><value>已写入文件与整合包清单不一致。</value></data>
+</root>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="ArchiveTooLarge" xml:space="preserve"><value>分发包超过大小上限。</value></data>
+  <data name="ArrayFieldMissing" xml:space="preserve"><value>整合包数组字段缺失：{0}</value></data>
+  <data name="DependenciesMissing" xml:space="preserve"><value>整合包缺少依赖。</value></data>
+  <data name="DownloadAddressMissing" xml:space="preserve"><value>整合包文件没有下载地址。</value></data>
+  <data name="DuplicateCurseForgeFile" xml:space="preserve"><value>CurseForge 文件重复。</value></data>
+  <data name="DuplicateFilePath" xml:space="preserve"><value>整合包清单包含重复文件路径。</value></data>
+  <data name="DuplicateManifestField" xml:space="preserve"><value>整合包清单字段重复。</value></data>
+  <data name="DuplicatePath" xml:space="preserve"><value>分发包包含重复路径：{0}</value></data>
+  <data name="ExpandedArchiveTooLarge" xml:space="preserve"><value>分发包解压大小超过上限。</value></data>
+  <data name="FieldMissing" xml:space="preserve"><value>整合包字段缺失：{0}</value></data>
+  <data name="FileDirectoryConflict" xml:space="preserve"><value>分发包文件与目录冲突：{0}</value></data>
+  <data name="InvalidCurseForgeFileId" xml:space="preserve"><value>CurseForge 文件标识不合法。</value></data>
+  <data name="InvalidLoaderId" xml:space="preserve"><value>加载器标识不合法。</value></data>
+  <data name="InvalidLoaderVersion" xml:space="preserve"><value>整合包加载器版本不合法。</value></data>
+  <data name="ManifestObjectRequired" xml:space="preserve"><value>整合包清单必须为 JSON 对象。</value></data>
+  <data name="ManifestTooLarge" xml:space="preserve"><value>整合包清单超过大小上限。</value></data>
+  <data name="MultipleLoaders" xml:space="preserve"><value>整合包声明了多个加载器。</value></data>
+  <data name="PackTooLarge" xml:space="preserve"><value>整合包文件总大小超过上限。</value></data>
+  <data name="PrimaryLoaderUnknown" xml:space="preserve"><value>无法确定整合包主加载器。</value></data>
+  <data name="SpecialFileUnsupported" xml:space="preserve"><value>分发包不能包含链接或特殊文件。</value></data>
+  <data name="TooManyEntries" xml:space="preserve"><value>分发包条目数量超过上限。</value></data>
+  <data name="UnknownClientRequirement" xml:space="preserve"><value>未知客户端文件要求。</value></data>
+  <data name="UnknownFormat" xml:space="preserve"><value>无法唯一识别整合包格式。</value></data>
+  <data name="UnknownServerRequirement" xml:space="preserve"><value>未知服务端文件要求。</value></data>
+  <data name="UnsupportedCurseForgeFormat" xml:space="preserve"><value>不支持的 CurseForge 分发格式。</value></data>
+  <data name="UnsupportedDependency" xml:space="preserve"><value>不支持的整合包依赖：{0}</value></data>
+  <data name="UnsupportedModrinthFormat" xml:space="preserve"><value>不支持的 Modrinth 分发格式或游戏。</value></data>
+</root>

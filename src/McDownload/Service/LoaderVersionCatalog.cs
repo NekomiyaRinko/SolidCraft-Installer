@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Xml;
@@ -45,7 +46,7 @@ public sealed class LoaderVersionCatalog(HmclFetchTask fetcher)
                         (x["files"] as JsonArray)?.Any(f => f?["category"]?.GetValue<string>() == "installer" && f?["format"]?.GetValue<string>() == "jar") == true)
                     .Select(x => Entry(VersionResolver.Text(x, "version") +
                         (x["branch"]?.GetValue<string>() is { Length: > 0 } branch ? "-" + branch : ""))).ToArray();
-            if (node is not JsonObject official) throw new InvalidDataException("Forge 版本列表不合法。");
+            if (node is not JsonObject official) throw new InvalidDataException(Text.Get("LoaderVersionCatalog", "InvalidForgeList"));
             return (official[minecraft] as JsonArray ?? new JsonArray()).Select(x =>
             {
                 string version = x!.GetValue<string>();
@@ -91,7 +92,7 @@ public sealed class LoaderVersionCatalog(HmclFetchTask fetcher)
 
     private static IReadOnlyList<LoaderVersionEntry> ParseFabric(byte[] bytes)
     {
-        if (JsonNode.Parse(bytes) is not JsonArray array) throw new InvalidDataException("Fabric 版本列表不合法。");
+        if (JsonNode.Parse(bytes) is not JsonArray array) throw new InvalidDataException(Text.Get("LoaderVersionCatalog", "InvalidFabricList"));
         return array.Select(x => new LoaderVersionEntry(VersionResolver.Text(x?["loader"], "version"),
             x?["loader"]?["stable"]?.GetValue<bool>() ?? false)).ToArray();
     }

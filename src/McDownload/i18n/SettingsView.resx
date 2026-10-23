@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Heading" xml:space="preserve"><value>设置</value></data>
+  <data name="Java" xml:space="preserve"><value>Java</value></data>
+  <data name="JavaPath" xml:space="preserve"><value>Java 路径</value></data>
+  <data name="Browse" xml:space="preserve"><value>浏览</value></data>
+  <data name="JavaDiscoveryHint" xml:space="preserve"><value>留空时自动查找 Java。Forge 与 NeoForge 安装可能需要 Java。</value></data>
+  <data name="DefaultMemory" xml:space="preserve"><value>默认内存（MB）</value></data>
+  <data name="MemoryPreferenceHint" xml:space="preserve"><value>保存为全局偏好，不会分配内存。</value></data>
+  <data name="DownloadSource" xml:space="preserve"><value>下载源</value></data>
+  <data name="MirrorNotice" xml:space="preserve"><value>BMCLAPI（https://bmclapi2.bangbang93.com）是可选的 Minecraft 资源下载镜像源，由 bangbang93 开发并维护。镜像超时、请求失败或摘要不一致时回退官方源。&#x0a;&#x0a;BMCLAPI 下的文件归源站点所有，SCI 不对其完整性、有效性或实时性作出保证。</value></data>
+  <data name="CurseForge" xml:space="preserve"><value>CurseForge</value></data>
+  <data name="ApplicationApiKey" xml:space="preserve"><value>应用 API key</value></data>
+  <data name="ApiKeyInstructions" xml:space="preserve"><value>API key 用于通过 CurseForge 官方 API 获取文件名、下载地址和校验摘要，不是账号密码。请在 CurseForge 开发者控制台登录并创建或管理应用，获取有效的应用 API key 后粘贴到此处。</value></data>
+  <data name="OpenCurseForgeConsole" xml:space="preserve"><value>前往 console.curseforge.com 获取 API key ↗</value></data>
+  <data name="RememberApiKey" xml:space="preserve"><value>在此电脑记住 API key</value></data>
+  <data name="Apply" xml:space="preserve"><value>应用</value></data>
+  <data name="Clear" xml:space="preserve"><value>清除</value></data>
+  <data name="ApiKeyStorageNotice" xml:space="preserve"><value>默认仅本次运行有效。勾选记住后通过 Windows 加密保存，仅当前 Windows 用户可读取。不会写入普通设置、实例记录或日志。</value></data>
+  <data name="GameDirectory" xml:space="preserve"><value>游戏目录</value></data>
+  <data name="MinecraftRoot" xml:space="preserve"><value>Minecraft 根目录</value></data>
+  <data name="UseDefaultRoot" xml:space="preserve"><value>使用程序目录下的 .minecraft</value></data>
+  <data name="SharedAssetsDirectory" xml:space="preserve"><value>共享资源目录</value></data>
+  <data name="SharedLibrariesDirectory" xml:space="preserve"><value>共享依赖库目录</value></data>
+  <data name="DirectoryIsolationNotice" xml:space="preserve"><value>SCI 实例的模组与存档独立。已有版本只读显示；切换目录不会迁移文件。</value></data>
+  <data name="DiagnosticLogs" xml:space="preserve"><value>诊断日志</value></data>
+  <data name="CurrentLogFile" xml:space="preserve"><value>当前日志文件</value></data>
+  <data name="DiagnosticPrivacyNotice" xml:space="preserve"><value>记录启动环境、请求、回退、异常链和操作结果。日志仅保存在本机；链接参数、令牌和用户目录会被隐藏。</value></data>
+  <data name="OpenLogFolder" xml:space="preserve"><value>打开日志文件夹</value></data>
+  <data name="ExportLogs" xml:space="preserve"><value>导出日志</value></data>
+  <data name="DeleteLogs" xml:space="preserve"><value>删除日志</value></data>
+</root>

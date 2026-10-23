@@ -1,3 +1,4 @@
+using McDownload.i18n;
 /*
  * Candidate fetching and checksum-aware downloads adapted from HMCL FetchTask and CacheFileTask.
  * Copyright (C) 2020-2026 huangyuhui and HMCL contributors.
@@ -30,7 +31,7 @@ public sealed class HmclFetchTask(HttpClient http, HmclDownloadProvider provider
         Action<long, long?>? progress = null)
     {
         if (sha1 is not null) VersionResolver.ValidateSha1(sha1);
-        if (size is < 0 or > MaximumDownloadBytes) throw new InvalidDataException("下载文件大小超出允许范围。");
+        if (size is < 0 or > MaximumDownloadBytes) throw new InvalidDataException(Text.Get("HmclFetchTask", "InvalidDownloadSize"));
         return ExecuteAsync(uri, async (address, ct) =>
         {
             using var response = await http.GetAsync(address, HttpCompletionOption.ResponseHeadersRead, ct);
@@ -39,7 +40,7 @@ public sealed class HmclFetchTask(HttpClient http, HmclDownloadProvider provider
             diagnostics?.Write("HTTP", $"Response status={(int)response.StatusCode}; requested={DiagnosticText.Address(address)}; final={DiagnosticText.Address(final)}");
             EnsureSuccess(response, address);
             if (response.Content.Headers.ContentLength is long contentLength && contentLength > MaximumDownloadBytes)
-                throw new InvalidDataException("下载文件超过大小上限。");
+                throw new InvalidDataException(Text.Get("HmclFetchTask", "DownloadTooLarge"));
 
             await InstanceManager.AtomicWriteAsync(path, async (output, cancellation) =>
             {
@@ -51,7 +52,7 @@ public sealed class HmclFetchTask(HttpClient http, HmclDownloadProvider provider
                 while ((count = await input.ReadAsync(buffer, cancellation)) > 0)
                 {
                     completed += count;
-                    if (completed > MaximumDownloadBytes) throw new InvalidDataException("下载文件超过大小上限。");
+                    if (completed > MaximumDownloadBytes) throw new InvalidDataException(Text.Get("HmclFetchTask", "DownloadTooLarge"));
                     digest.AppendData(buffer, 0, count);
                     await output.WriteAsync(buffer.AsMemory(0, count), cancellation);
                     progress?.Invoke(completed, size ?? response.Content.Headers.ContentLength);
@@ -59,9 +60,9 @@ public sealed class HmclFetchTask(HttpClient http, HmclDownloadProvider provider
 
                 long? expectedSize = size ?? response.Content.Headers.ContentLength;
                 if (expectedSize is long expected && completed != expected)
-                    throw new DownloadIntegrityException("下载文件大小不一致。");
+                    throw new DownloadIntegrityException(Text.Get("HmclFetchTask", "DownloadSizeMismatch"));
                 if (sha1 is not null && !Convert.ToHexString(digest.GetHashAndReset()).Equals(sha1, StringComparison.OrdinalIgnoreCase))
-                    throw new DownloadIntegrityException("下载文件 SHA-1 校验失败。");
+                    throw new DownloadIntegrityException(Text.Get("HmclFetchTask", "DownloadHashMismatch"));
             }, ct);
             return true;
         }, token, timeout: TimeSpan.FromMinutes(10));
@@ -117,7 +118,7 @@ public sealed class HmclFetchTask(HttpClient http, HmclDownloadProvider provider
                     TimeoutException or OperationCanceledException)
                 {
                     Exception failure = ex is OperationCanceledException && !token.IsCancellationRequested
-                        ? new TimeoutException($"下载请求超时：{DiagnosticText.Address(candidate.Uri)}", ex) : ex;
+                        ? new TimeoutException(Text.Format("HmclFetchTask", "RequestTimeout", DiagnosticText.Address(candidate.Uri)), ex) : ex;
                     lastError = failure;
                     bool shouldRetry = provider.ShouldRetry(candidate, failure);
                     diagnostics?.Write("HTTP", $"Failed {context}; ElapsedMs={timer.ElapsedMilliseconds}", failure);
@@ -142,8 +143,8 @@ public sealed class HmclFetchTask(HttpClient http, HmclDownloadProvider provider
 
         if (lastError is TimeoutException timeoutError) throw timeoutError;
         if (lastError is OperationCanceledException canceled && !token.IsCancellationRequested)
-            throw new TimeoutException($"下载请求超时：{DiagnosticText.Address(original)}", canceled);
-        throw lastError ?? new HttpRequestException("没有可用的下载地址：" + DiagnosticText.Address(original));
+            throw new TimeoutException(Text.Format("HmclFetchTask", "RequestTimeout", DiagnosticText.Address(original)), canceled);
+        throw lastError ?? new HttpRequestException(Text.Format("HmclFetchTask", "DownloadAddressMissing", DiagnosticText.Address(original)));
     }
 
     private async Task<byte[]> ReadBytesAsync(Uri uri, int maximum, CancellationToken token)
@@ -153,14 +154,14 @@ public sealed class HmclFetchTask(HttpClient http, HmclDownloadProvider provider
         VersionResolver.RequireHttps(final);
         diagnostics?.Write("HTTP", $"Response status={(int)response.StatusCode}; requested={DiagnosticText.Address(uri)}; final={DiagnosticText.Address(final)}");
         EnsureSuccess(response, uri);
-        if (response.Content.Headers.ContentLength > maximum) throw new InvalidDataException("响应超过大小上限。");
+        if (response.Content.Headers.ContentLength > maximum) throw new InvalidDataException(Text.Get("HmclFetchTask", "ResponseTooLarge"));
         await using var input = await response.Content.ReadAsStreamAsync(token);
         using var output = new MemoryStream();
         byte[] buffer = new byte[65536];
         int count;
         while ((count = await input.ReadAsync(buffer, token)) > 0)
         {
-            if (output.Length + count > maximum) throw new InvalidDataException("响应超过大小上限。");
+            if (output.Length + count > maximum) throw new InvalidDataException(Text.Get("HmclFetchTask", "ResponseTooLarge"));
             output.Write(buffer, 0, count);
         }
         return output.ToArray();
@@ -171,7 +172,7 @@ public sealed class HmclFetchTask(HttpClient http, HmclDownloadProvider provider
         if (response.IsSuccessStatusCode) return;
         Uri final = response.RequestMessage?.RequestUri ?? requested;
         string address = DiagnosticText.Address(final);
-        var error = new HttpRequestException($"HTTP {(int)response.StatusCode} ({response.StatusCode})：{address}", null, response.StatusCode);
+        var error = new HttpRequestException(Text.Format("HmclFetchTask", "HttpFailed", (int)response.StatusCode, response.StatusCode, address), null, response.StatusCode);
         error.Data["RequestUri"] = DiagnosticText.Address(requested);
         error.Data["ResponseUri"] = address;
         throw error;

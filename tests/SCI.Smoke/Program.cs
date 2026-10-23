@@ -128,6 +128,7 @@ internal static class Program
                  await ModpackRecoveryChecks.RunAsync(root, Check);
                  await ModpackTransportChecks.RunAsync(root, Check);
                  await CurseForgeCredentialChecks.RunAsync(window, root, Check, Capture);
+                 LocalizationChecks.Run(root, Check);
                 await ForbiddenChecks.RunAsync(model.State, root, Check);
                 await DiagnosticChecks.RunAsync(model.State, root, Check);
                 model.CurrentPage = "Settings"; window.UpdateLayout();

@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -13,15 +14,15 @@ public sealed record InstanceItem(InstalledVersionInfo Version, ModpackImportSta
     public string MinecraftVersion => Version.MinecraftVersion;
     public string Loader => Version.LoaderDescription;
     public bool CanManage => Metadata is not null;
-    public string Isolation => CanManage ? "SCI 实例 · 模组与存档独立" : "已有版本 · 只读";
-    public string Details => Version.Warning ?? (CanManage ? "模组与存档独立" : "非 SCI 创建的版本，仅查看信息和打开文件夹。");
+    public string Isolation => CanManage ? Text.Get("InstanceList", "ManagedIsolation") : Text.Get("InstanceList", "ReadOnlyVersion");
+    public string Details => Version.Warning ?? (CanManage ? Text.Get("InstanceList", "IsolatedData") : Text.Get("InstanceList", "ReadOnlyDetails"));
     public bool HasModpack => Modpack is not null || ModpackError is not null;
     public bool CanResumeModpack => Modpack is { Status: not ModpackImportStatus.Completed };
-    public string ModpackStatus => Modpack is { } state ? "整合包 · " + DescribeImportStatus(state.Status) : ModpackError ?? "";
+    public string ModpackStatus => Modpack is { } state ? Text.Format("InstanceList", "ModpackStatus", DescribeImportStatus(state.Status)) : ModpackError ?? "";
     public static string DescribeImportStatus(ModpackImportStatus status) => status switch
     {
-        ModpackImportStatus.Completed => "已完成", ModpackImportStatus.NeedsFiles => "待补齐文件",
-        ModpackImportStatus.Canceled => "已取消，可继续", ModpackImportStatus.Failed => "导入失败，可继续", _ => "导入未完成"
+        ModpackImportStatus.Completed => Text.Get("Common", "Completed"), ModpackImportStatus.NeedsFiles => Text.Get("InstanceList", "NeedsFiles"),
+        ModpackImportStatus.Canceled => Text.Get("InstanceList", "ImportCanceled"), ModpackImportStatus.Failed => Text.Get("InstanceList", "ImportFailed"), _ => Text.Get("InstanceList", "ImportIncomplete")
     };
 }
 
@@ -57,7 +58,7 @@ public partial class InstanceListViewModel : ObservableObject
                 if (item.Metadata is { } metadata)
                 {
                     try { pack = await State.Modpacks.GetStateAsync(metadata.Id, default); }
-                    catch (Exception ex) { error = "整合包状态读取失败：" + Service.DiagnosticText.Summary(ex); }
+                    catch (Exception ex) { error = Text.Format("InstanceList", "ModpackStateReadFailed", Service.DiagnosticText.Summary(ex)); }
                 }
                 loaded.Add(new(item, pack, error));
             }
@@ -66,7 +67,7 @@ public partial class InstanceListViewModel : ObservableObject
             foreach (var item in loaded) Instances.Add(item);
             SelectedInstance = Instances.FirstOrDefault(x => x.Version.DirectoryPath == directory) ?? Instances.FirstOrDefault();
         }
-        catch (Exception ex) { State.ReportError("实例列表读取失败", ex); }
+        catch (Exception ex) { State.ReportError(Text.Get("InstanceList", "ListReadFailed"), ex); }
     }
     [RelayCommand] private async Task ManageLoaderAsync()
     { if (SelectedInstance?.Metadata is { } metadata) await _manage(metadata); }
@@ -86,7 +87,7 @@ public partial class InstanceListViewModel : ObservableObject
             directory = Service.InstanceManager.Normal(directory);
             Process.Start(new ProcessStartInfo("explorer.exe") { UseShellExecute = false, ArgumentList = { directory } });
         }
-        catch (Exception ex) { State.ReportError("实例目录打开失败", ex); }
+        catch (Exception ex) { State.ReportError(Text.Get("InstanceList", "DirectoryOpenFailed"), ex); }
     }
     [RelayCommand] private async Task DeleteAsync()
     {
@@ -104,13 +105,13 @@ public partial class InstanceListViewModel : ObservableObject
             _pendingDelete = pending;
             DeleteWarning = ex.Message; IsDeleteConfirmationVisible = true;
         }
-        catch (Exception ex) { State.ReportError("实例删除准备失败", ex); }
+        catch (Exception ex) { State.ReportError(Text.Get("InstanceList", "DeletePreparationFailed"), ex); }
     }
     [RelayCommand] private async Task ConfirmDeleteAsync()
     {
         if (State.IsBusy || _pendingDelete is not { } request || SelectedInstance?.Metadata?.Id != request.InstanceId) return;
         IsDeleteConfirmationVisible = false;
-        await State.RunAsync("正在回收实例…", context => State.Instances.DeleteAsync(request, context.CancellationToken));
+        await State.RunAsync(Text.Get("InstanceList", "RecyclingInstance"), context => State.Instances.DeleteAsync(request, context.CancellationToken));
         _pendingDelete = null;
         await RefreshAsync();
     }

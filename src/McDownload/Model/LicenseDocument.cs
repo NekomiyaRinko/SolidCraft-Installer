@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Reflection;
 using System.Text;
 
@@ -7,10 +8,10 @@ public sealed record LicenseDocument(string FileName, string Title, string Conte
 {
     private static readonly (string FileName, string Title)[] OrderedFiles =
     {
-        ("LICENSE", "GNU General Public License v3"),
-        ("HMCL-ADDITIONAL-TERMS.md", "HMCL 附加条款"),
-        ("NOTICE", "来源与修改声明"),
-        ("THIRD-PARTY-NOTICES.md", "CommunityToolkit.Mvvm · MIT 与第三方声明")
+        ("LICENSE", Text.Get("LicenseDocument", "GplTitle")),
+        ("HMCL-ADDITIONAL-TERMS.md", Text.Get("LicenseDocument", "HmclTerms")),
+        ("NOTICE", Text.Get("LicenseDocument", "SourceNotice")),
+        ("THIRD-PARTY-NOTICES.md", Text.Get("LicenseDocument", "ThirdPartyNotices"))
     };
 
     public static IReadOnlyList<LicenseDocument> LoadEmbedded(Assembly? assembly = null)
@@ -20,7 +21,7 @@ public sealed record LicenseDocument(string FileName, string Title, string Conte
         {
             string resourceName = "McDownload.Licenses." + file.FileName;
             using Stream stream = assembly.GetManifestResourceStream(resourceName)
-                ?? throw new InvalidOperationException($"内嵌许可文件不存在：{file.FileName}");
+                ?? throw new InvalidOperationException(Text.Format("LicenseDocument", "EmbeddedLicenseMissing", file.FileName));
             using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
             return new LicenseDocument(file.FileName, file.Title, reader.ReadToEnd());
         }).ToArray();

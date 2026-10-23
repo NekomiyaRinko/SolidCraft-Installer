@@ -1,3 +1,4 @@
+using McDownload.i18n;
 namespace McDownload.Model;
 
 public enum DownloadSource
@@ -8,7 +9,7 @@ public enum DownloadSource
 
 public sealed record LoaderVersionEntry(string Version, bool IsStable)
 {
-    public string DisplayName => $"{Version} · {(IsStable ? "正式版" : "测试版")}";
+    public string DisplayName => Text.Format("DownloadCatalogContracts", "VersionChannel", Version, (IsStable ? Text.Get("Common", "Release") : Text.Get("Common", "Snapshot")));
 }
 
 public sealed record InstalledVersionInfo(

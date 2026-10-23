@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="AddingTask" xml:space="preserve"><value>正在添加下载任务…</value></data>
+  <data name="CheckingCompatibility" xml:space="preserve"><value>正在检查加载器兼容性…</value></data>
+  <data name="CheckInstance" xml:space="preserve"><value>检查实例</value></data>
+  <data name="InstallingLoader" xml:space="preserve"><value>正在安装 {0}</value></data>
+  <data name="InstallLoader" xml:space="preserve"><value>安装 {0}</value></data>
+  <data name="InstallLoaderTitle" xml:space="preserve"><value>{0} · 安装 {1}</value></data>
+  <data name="InstanceCreated" xml:space="preserve"><value>实例已创建：{0}</value></data>
+  <data name="InvalidInstallArguments" xml:space="preserve"><value>安装参数无效</value></data>
+  <data name="InvalidLoaderSelection" xml:space="preserve"><value>加载器选择无效</value></data>
+  <data name="LoaderStateReadFailed" xml:space="preserve"><value>加载器状态读取失败</value></data>
+  <data name="LoaderStateUnread" xml:space="preserve"><value>加载器状态未读取</value></data>
+  <data name="LoaderWarning" xml:space="preserve"><value>不会删除 mods 文件夹中的模组，但旧模组可能不兼容新加载器。</value></data>
+  <data name="LoadingVersions" xml:space="preserve"><value>正在加载版本列表…</value></data>
+  <data name="PrepareInstance" xml:space="preserve"><value>准备实例</value></data>
+  <data name="RemoveLoaderConfirmation" xml:space="preserve"><value>删除当前加载器？</value></data>
+  <data name="RemovingLoader" xml:space="preserve"><value>正在删除加载器…</value></data>
+  <data name="ReplacementConfirmation" xml:space="preserve"><value>将 {0} 更换为 {1} {2}？</value></data>
+  <data name="ReplacementExpired" xml:space="preserve"><value>更换计划已失效，请重新检查加载器。</value></data>
+  <data name="ReplacingLoader" xml:space="preserve"><value>正在更换加载器…</value></data>
+  <data name="ResumeDownloadHint" xml:space="preserve"><value>未完成的下载可在实例中继续。</value></data>
+  <data name="ResumeGameTitle" xml:space="preserve"><value>{0} · 下载 / 校验原版游戏</value></data>
+  <data name="SaveInstance" xml:space="preserve"><value>保存实例</value></data>
+  <data name="SelectionChanged" xml:space="preserve"><value>实例或加载器选择已变化，请重新检查。</value></data>
+  <data name="SelectLoader" xml:space="preserve"><value>请选择 Forge、Fabric 或 NeoForge。</value></data>
+  <data name="VersionListFailed" xml:space="preserve"><value>版本列表获取失败</value></data>
+  <data name="WaitForQueue" xml:space="preserve"><value>请等待任务队列结束后更换加载器。</value></data>
+</root>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="CanceledFilesRetained" xml:space="preserve"><value>任务已取消，已保留完成文件。</value></data>
+  <data name="DownloadPageOpenFailed" xml:space="preserve"><value>下载页面打开失败：{0}</value></data>
+  <data name="ImportRecordMissing" xml:space="preserve"><value>实例没有整合包导入记录。</value></data>
+  <data name="ResumeFailed" xml:space="preserve"><value>未能继续导入，请查看任务队列。</value></data>
+  <data name="ResumeImport" xml:space="preserve"><value>继续导入</value></data>
+  <data name="SelectedPendingValidation" xml:space="preserve"><value>已选择 · 待校验</value></data>
+  <data name="SelectMissingFile" xml:space="preserve"><value>选择待补齐文件</value></data>
+  <data name="SelectSameArchive" xml:space="preserve"><value>重新选择相同的整合包</value></data>
+  <data name="ImportSummary" xml:space="preserve"><value>{0} · {1} · {2}</value></data>
+</root>

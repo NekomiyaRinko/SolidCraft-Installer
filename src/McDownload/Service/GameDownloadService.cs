@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Security.Cryptography;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -13,9 +14,9 @@ public sealed class GameDownloadService(InstanceManager instances, VersionResolv
         string directory = await instances.FindDirectoryAsync(id, token);
         await using var lease = await instances.LockInstanceAsync(id, token);
         var metadata = await instances.ReadLockedAsync(directory, token);
-        if (metadata.MinecraftVersionId != entry.Id) throw new InvalidOperationException("实例游戏版本不一致。");
+        if (metadata.MinecraftVersionId != entry.Id) throw new InvalidOperationException(Text.Get("GameDownloadService", "VersionMismatch"));
         if (metadata.InstalledLoader is not null || metadata.ActivePatchIds.Count > 0)
-            throw new InvalidOperationException("请先删除加载器，再下载原版游戏。");
+            throw new InvalidOperationException(Text.Get("GameDownloadService", "RemoveLoaderFirst"));
         var paths = instances.Paths(metadata);
         var vanilla = await versions.FetchVersionJsonAsync(entry, token);
         var resolved = await versions.ResolveLockedAsync(vanilla, metadata, new(id, 64, true), token);
@@ -23,11 +24,11 @@ public sealed class GameDownloadService(InstanceManager instances, VersionResolv
         long sequence = 0;
         void Report(OperationStep step, string name, double? fraction = null) => context.Progress?.Report(new(context.OperationId, id,
             Interlocked.Increment(ref sequence), OperationStage.Downloading, null, fraction, 0, null, name, step));
-        Report(OperationStep.Client, "正在下载客户端", 0);
-        await FetchAsync(json["downloads"]?["client"] as JsonObject ?? throw new InvalidDataException("客户端信息缺失。"), paths.ClientJarFile, token,
-            (bytes, total) => Report(OperationStep.Client, "正在下载客户端", total is > 0 ? (double)bytes / total.Value : null));
-        Report(OperationStep.Client, "客户端已完成", 1);
-        Report(OperationStep.Libraries, "正在下载依赖库", 0);
+        Report(OperationStep.Client, Text.Get("GameDownloadService", "DownloadingClient"), 0);
+        await FetchAsync(json["downloads"]?["client"] as JsonObject ?? throw new InvalidDataException(Text.Get("GameDownloadService", "ClientMissing")), paths.ClientJarFile, token,
+            (bytes, total) => Report(OperationStep.Client, Text.Get("GameDownloadService", "DownloadingClient"), total is > 0 ? (double)bytes / total.Value : null));
+        Report(OperationStep.Client, Text.Get("GameDownloadService", "ClientCompleted"), 1);
+        Report(OperationStep.Libraries, Text.Get("GameDownloadService", "DownloadingLibraries"), 0);
         if (json["libraries"] is JsonArray libraries)
         {
             var applicableLibraries = libraries.OfType<JsonObject>().Where(IsWindows).ToArray();
@@ -36,7 +37,7 @@ public sealed class GameDownloadService(InstanceManager instances, VersionResolv
             await fetcher.ForEachAsync(applicableLibraries, 8, async (library, cancellation) =>
             {
                 cancellation.ThrowIfCancellationRequested();
-                Report(OperationStep.Libraries, "下载依赖库：" + library["name"]?.GetValue<string>(),
+                Report(OperationStep.Libraries, Text.Format("GameDownloadService", "DownloadingLibrary", library["name"]?.GetValue<string>()),
                     (double)Volatile.Read(ref completed) / Math.Max(1, applicableLibraries.Length));
                 if (library["downloads"]?["artifact"] is JsonObject artifact)
                     await FetchAsync(artifact, InstanceManager.Child(paths.LibrariesDirectory, VersionResolver.Text(artifact, "path")), cancellation);
@@ -44,24 +45,24 @@ public sealed class GameDownloadService(InstanceManager instances, VersionResolv
                 {
                     classifier = classifier.Replace("${arch}", Environment.Is64BitOperatingSystem ? "64" : "32");
                     var native = library["downloads"]?["classifiers"]?[classifier] as JsonObject
-                        ?? throw new InvalidDataException("Windows native 信息缺失。");
+                        ?? throw new InvalidDataException(Text.Get("GameDownloadService", "NativeMissing"));
                     await FetchAsync(native, InstanceManager.Child(paths.LibrariesDirectory, VersionResolver.Text(native, "path")), cancellation);
                 }
                 int count = Interlocked.Increment(ref completed);
-                if (count % 10 == 0 || count == applicableLibraries.Length) Report(OperationStep.Libraries, $"依赖库 {count}/{applicableLibraries.Length}", (double)count / Math.Max(1, applicableLibraries.Length));
+                if (count % 10 == 0 || count == applicableLibraries.Length) Report(OperationStep.Libraries, Text.Format("GameDownloadService", "LibraryProgress", count, applicableLibraries.Length), (double)count / Math.Max(1, applicableLibraries.Length));
             }, token);
         }
-        Report(OperationStep.Libraries, "依赖库已完成", 1);
-        Report(OperationStep.Assets, "正在下载资源文件", 0);
+        Report(OperationStep.Libraries, Text.Get("GameDownloadService", "LibrariesCompleted"), 1);
+        Report(OperationStep.Assets, Text.Get("GameDownloadService", "DownloadingAssets"), 0);
         if (json["assetIndex"] is JsonObject assetIndex)
         {
             string indexId = VersionResolver.Text(assetIndex, "id"); InstanceManager.ValidateName(indexId);
             string indexPath = InstanceManager.Child(paths.AssetsDirectory, "indexes/" + indexId + ".json");
-            Report(OperationStep.Assets, "下载资源索引", 0);
+            Report(OperationStep.Assets, Text.Get("GameDownloadService", "DownloadingAssetIndex"), 0);
             await using (var assetsLease = await instances.LockLibrariesAsync(token))
                 await FetchAsync(assetIndex, indexPath, token);
             var index = await InstanceManager.ReadObjectAsync(indexPath, token);
-            var objects = index["objects"] as JsonObject ?? throw new InvalidDataException("资源索引内容不合法。");
+            var objects = index["objects"] as JsonObject ?? throw new InvalidDataException(Text.Get("GameDownloadService", "AssetIndexInvalid"));
             var entries = objects.ToArray();
             int completed = 0;
             await fetcher.ForEachAsync(entries, 8, async (item, cancellation) =>
@@ -77,21 +78,21 @@ public sealed class GameDownloadService(InstanceManager instances, VersionResolv
                 if (index["map_to_resources"]?.GetValue<bool>() == true)
                     await CopyAsync(objectPath, InstanceManager.Child(paths.GameDirectory, "resources/" + item.Key), cancellation);
                 int count = Interlocked.Increment(ref completed);
-                if (count % 50 == 0 || count == entries.Length) Report(OperationStep.Assets, $"游戏资源 {count}/{entries.Length}", (double)count / Math.Max(1, entries.Length));
+                if (count % 50 == 0 || count == entries.Length) Report(OperationStep.Assets, Text.Format("GameDownloadService", "AssetProgress", count, entries.Length), (double)count / Math.Max(1, entries.Length));
             }, token);
         }
-        Report(OperationStep.Assets, "资源文件已完成", 1);
+        Report(OperationStep.Assets, Text.Get("GameDownloadService", "AssetsCompleted"), 1);
         var baseJson = (JsonObject)json.DeepClone();
         baseJson["id"] = VersionResolver.ParentId(metadata); baseJson.Remove("inheritsFrom"); baseJson.Remove("jar");
         var baseVersion = new VersionDocument(VersionResolver.ParentId(metadata), baseJson);
         var effective = versions.Compose(baseVersion, Array.Empty<VersionPatch>(), metadata.DirectoryName);
-        Report(OperationStep.Saving, "正在保存版本信息", 0);
+        Report(OperationStep.Saving, Text.Get("GameDownloadService", "SavingVersion"), 0);
         var result = await instances.CommitLockedAsync(paths.GameDirectory, metadata, new()
         {
             [".launcher/base.json"] = InstanceManager.Serialize(baseJson),
             [metadata.DirectoryName + ".json"] = versions.SerializeStandalone(effective)
         }, token);
-        Report(OperationStep.Saving, "版本信息已保存", 1);
+        Report(OperationStep.Saving, Text.Get("GameDownloadService", "VersionSaved"), 1);
         return result;
     }
     private async Task FetchAsync(JsonObject descriptor, string path, CancellationToken token, Action<long, long?>? progress = null)

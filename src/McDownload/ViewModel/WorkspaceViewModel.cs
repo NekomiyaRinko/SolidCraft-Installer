@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Collections.ObjectModel;
 using System.Net.Http;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -18,7 +19,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     public bool HasCurseForgeApiKey => !string.IsNullOrWhiteSpace(_sessionCurseForgeKey);
     public void SetCurseForgeApiKey(string? key)
     {
-        if (IsBusy) throw new InvalidOperationException("请等待任务队列结束后修改 CurseForge API key。");
+        if (IsBusy) throw new InvalidOperationException(Text.Get("Workspace", "WaitForQueueBeforeCredentials"));
         _sessionCurseForgeKey = key is null ? null : CurseForgeCredentialStore.Validate(key);
         OnPropertyChanged(nameof(HasCurseForgeApiKey));
     }
@@ -39,7 +40,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     private long _taskOrder;
     public ObservableCollection<QueuedTaskViewModel> Tasks { get; } = new();
     [ObservableProperty] private QueuedTaskViewModel? currentTask;
-    public string QueueSummary => $"{Tasks.Count(x => x.IsRunning)} 项执行中 · {Tasks.Count(x => x.IsPending)} 项等待";
+    public string QueueSummary => Text.Format("Workspace", "QueueSummary", Tasks.Count(x => x.IsRunning), Tasks.Count(x => x.IsPending));
     [ObservableProperty] private bool hasTaskNotification;
     private long _notificationGeneration;
     internal Task TaskNotification { get; private set; } = Task.CompletedTask;
@@ -68,19 +69,19 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         _diagnostics = diagnostics ?? new DiagnosticLog();
         _curseforge = new(() => _sessionCurseForgeKey ?? curseForgeApiKey?.Invoke(), curseForgeHandler);
         _modpackDownloads = new(diagnostics: _diagnostics);
-        Log("诊断日志文件：" + (_diagnostics.FilePath ?? "不可用"));
+        Log(Text.Format("Workspace", "DiagnosticLogFile", (_diagnostics.FilePath ?? Text.Get("Workspace", "Unavailable"))));
     }
     public ObservableCollection<string> Logs { get; } = new();
     [ObservableProperty] private bool isBusy;
     [ObservableProperty] private bool isIndeterminate;
     [ObservableProperty] private double progress;
-    [ObservableProperty] private string status = "就绪";
+    [ObservableProperty] private string status = Text.Get("Workspace", "Ready");
     [ObservableProperty] private string? error;
     public event EventHandler? Changed;
     public event EventHandler? ConfigurationChanged;
     public void Configure(string root, DownloadSource downloadSource = DownloadSource.Bmclapi)
     {
-        if (IsBusy) throw new InvalidOperationException("任务运行期间不能切换游戏目录。");
+        if (IsBusy) throw new InvalidOperationException(Text.Get("Workspace", "CannotSwitchDirectory"));
         Instances = new(root);
         DownloadProvider = new(downloadSource, Log);
         Fetcher = new(_http, DownloadProvider, _diagnostics);
@@ -91,7 +92,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         InstalledVersions = new(Instances);
         Modpacks = new(Instances, Versions, Games, Loaders, _curseforge, _modpackDownloads);
         ConfigurationVersion++;
-        Log($"游戏目录：{root}；下载源：{downloadSource}");
+        Log(Text.Format("Workspace", "ConfigurationDetails", root, downloadSource));
         ConfigurationChanged?.Invoke(this, EventArgs.Empty);
         Changed?.Invoke(this, EventArgs.Empty);
     }
@@ -104,7 +105,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     public void LogException(string message, Exception error)
     {
         _diagnostics.Write("ERROR", message, error);
-        AppendLog(DiagnosticText.Redact(message) + "：" + DiagnosticText.Summary(error), CurrentTask);
+        AppendLog(Text.Format("Workspace", "MessageDetails", DiagnosticText.Redact(message), DiagnosticText.Summary(error)), CurrentTask);
     }
     public void ReportError(string message, Exception error)
     { Error = DiagnosticText.Redact(error.Message); LogException(message, error); }
@@ -116,13 +117,13 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
             if (!dispatcher.HasShutdownStarted) dispatcher.BeginInvoke(() => AppendLog(message, task));
             return;
         }
-        Logs.Add($"{DateTime.Now:HH:mm:ss}  {message}");
+        Logs.Add(Text.Format("Workspace", "TimestampedLog", DateTime.Now, message));
         task?.Logs.Add(Logs[^1]);
         if (task?.Logs.Count > 500) task.Logs.RemoveAt(0);
         if (_diagnostics.Error is not null && !_loggingFailureReported)
         {
             _loggingFailureReported = true;
-            Logs.Add("诊断日志写入失败，仅保留界面日志：" + _diagnostics.Error);
+            Logs.Add(Text.Format("Workspace", "DiagnosticWriteFailed", _diagnostics.Error));
         }
         if (Logs.Count > 500) Logs.RemoveAt(0);
     }
@@ -135,9 +136,9 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     public Task<bool> EnqueueModpackAsync(ModpackImportRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.ExpectedArchiveSha256))
-            throw new ArgumentException("排队导入前请先预览整合包并固定源包摘要。", nameof(request));
+            throw new ArgumentException(Text.Get("Workspace", "PreviewRequired"), nameof(request));
         var snapshot = request with { SelectedOptionalFiles = request.SelectedOptionalFiles?.ToArray() };
-        return EnqueueAsync(snapshot.DirectoryName + " · 导入整合包", async context =>
+        return EnqueueAsync(Text.Format("Workspace", "ImportPackTitle", snapshot.DirectoryName), async context =>
         {
             var result = await Modpacks.ImportAsync(snapshot, context);
             if (result.State.Status != ModpackImportStatus.Completed) throw new ModpackFilesRequiredException(result);
@@ -147,7 +148,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     public Task<bool> ResumeModpackAsync(ModpackResumeRequest request)
     {
         var snapshot = request with { LocalFiles = request.LocalFiles?.ToDictionary(x => x.Key, x => x.Value) };
-        return EnqueueAsync("继续导入整合包", async context =>
+        return EnqueueAsync(Text.Get("Workspace", "ResumePackTitle"), async context =>
         {
             var result = await Modpacks.ResumeAsync(snapshot, context);
             if (result.State.Status != ModpackImportStatus.Completed) throw new ModpackFilesRequiredException(result);
@@ -161,7 +162,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         if (_stopping || IsUpdatingCredentials) return Task.FromResult(false);
         steps ??= new[] { (OperationStep.Preparing, label) };
         if (steps.Count == 0 || steps.Select(x => x.Kind).Distinct().Count() != steps.Count)
-            throw new ArgumentException("任务阶段不能为空或重复。", nameof(steps));
+            throw new ArgumentException(Text.Get("Workspace", "InvalidSteps"), nameof(steps));
         var task = new QueuedTaskViewModel(label, ++_taskOrder, steps, action);
         Tasks.Add(task); _pending.Enqueue(task);
         TaskNotification = NotifyTaskAddedAsync();
@@ -209,18 +210,18 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
             Log(task.Title);
             await task.Action(new(id, reporter, source.Token));
             task.Finish(QueuedTaskState.Completed);
-            Status = "任务完成"; IsIndeterminate = false; Progress = 100; Log(Status);
+            Status = Text.Get("Common", "TaskCompleted"); IsIndeterminate = false; Progress = 100; Log(Status);
             return true;
         }
         catch (OperationCanceledException) when (source.IsCancellationRequested)
-        { task.Finish(QueuedTaskState.Canceled); Status = "任务已取消"; Log(Status); return false; }
+        { task.Finish(QueuedTaskState.Canceled); Status = Text.Get("Common", "TaskCanceled"); Log(Status); return false; }
         catch (OperationCanceledException ex)
-        { Error = "请求超时或被中断，请重试。"; task.Finish(QueuedTaskState.Failed, Error); Status = "任务未完成"; LogException(Error, ex); return false; }
+        { Error = Text.Get("Workspace", "RequestInterrupted"); task.Finish(QueuedTaskState.Failed, Error); Status = Text.Get("Common", "TaskIncomplete"); LogException(Error, ex); return false; }
         catch (Exception ex)
         {
-            Error = DiagnosticText.Redact(ex.Message); Status = "任务未完成";
+            Error = DiagnosticText.Redact(ex.Message); Status = Text.Get("Common", "TaskIncomplete");
             task.Finish(QueuedTaskState.Failed, Error);
-            LogException($"{task.Title}：{Status}", ex); return false;
+            LogException(Text.Format("Workspace", "MessageDetails", task.Title, Status), ex); return false;
         }
         finally
         {
@@ -258,8 +259,8 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     [RelayCommand] private void Cancel()
     {
         if (_cancellation is not { IsCancellationRequested: false } cancellation) return;
-        Log("已请求取消当前任务。");
-        cancellation.Cancel(); Status = "正在取消…";
+        Log(Text.Get("Workspace", "CancelRequested"));
+        cancellation.Cancel(); Status = Text.Get("Workspace", "Canceling");
         if (CurrentTask is not null) CurrentTask.CurrentItem = Status;
     }
     public void Dispose()

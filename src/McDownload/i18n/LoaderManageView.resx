@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Heading" xml:space="preserve"><value>加载器管理</value></data>
+  <data name="MinecraftVersionFormat" xml:space="preserve"><value>Minecraft {0}</value></data>
+  <data name="RemoveSymbol" xml:space="preserve"><value>×</value></data>
+  <data name="RemoveCurrentLoader" xml:space="preserve"><value>删除当前加载器</value></data>
+  <data name="ResumeGame" xml:space="preserve"><value>下载 / 校验原版游戏</value></data>
+  <data name="ModCompatibilityNotice" xml:space="preserve"><value>不会删除 mods 文件夹中的模组，但旧模组可能不兼容新加载器。</value></data>
+  <data name="InstallHeading" xml:space="preserve"><value>安装或更换加载器</value></data>
+  <data name="InstallOrReplace" xml:space="preserve"><value>安装 / 更换</value></data>
+  <data name="Confirm" xml:space="preserve"><value>确认</value></data>
+  <data name="Cancel" xml:space="preserve"><value>取消</value></data>
+</root>

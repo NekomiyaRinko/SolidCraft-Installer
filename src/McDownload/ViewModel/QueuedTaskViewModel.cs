@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using McDownload.Model;
@@ -16,18 +17,18 @@ public partial class TaskStepViewModel(OperationStep kind, string title) : Obser
     public bool IsRunning => State == QueuedTaskState.Running;
     public string Symbol => State switch
     {
-        QueuedTaskState.Running => "●",
-        QueuedTaskState.Completed => "✓",
-        QueuedTaskState.Canceled or QueuedTaskState.Failed => "×",
-        _ => "○"
+        QueuedTaskState.Running => Text.Get("QueuedTask", "RunningSymbol"),
+        QueuedTaskState.Completed => Text.Get("QueuedTask", "CompletedSymbol"),
+        QueuedTaskState.Canceled or QueuedTaskState.Failed => Text.Get("QueuedTask", "FailedSymbol"),
+        _ => Text.Get("QueuedTask", "PendingSymbol")
     };
     public string StatusText => State switch
     {
-        QueuedTaskState.Running => IsIndeterminate ? "进行中" : $"{Progress:0}%",
-        QueuedTaskState.Completed => "已完成",
-        QueuedTaskState.Canceled => "已取消",
-        QueuedTaskState.Failed => "失败",
-        _ => "未开始"
+        QueuedTaskState.Running => IsIndeterminate ? Text.Get("Common", "InProgress") : Text.Format("QueuedTask", "ProgressPercent", Progress),
+        QueuedTaskState.Completed => Text.Get("Common", "Completed"),
+        QueuedTaskState.Canceled => Text.Get("Common", "Canceled"),
+        QueuedTaskState.Failed => Text.Get("Common", "Failed"),
+        _ => Text.Get("QueuedTask", "NotStarted")
     };
     partial void OnStateChanged(QueuedTaskState value)
     { OnPropertyChanged(nameof(IsRunning)); OnPropertyChanged(nameof(Symbol)); OnPropertyChanged(nameof(StatusText)); }
@@ -46,7 +47,7 @@ public partial class QueuedTaskViewModel : ObservableObject
     internal TaskCompletionSource<bool> Completion { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private int _activeStep;
     [ObservableProperty] private QueuedTaskState state;
-    [ObservableProperty] private string currentItem = "等待执行";
+    [ObservableProperty] private string currentItem = Text.Get("Common", "Waiting");
     [ObservableProperty] private double progress;
     [ObservableProperty] private bool isIndeterminate = true;
     [ObservableProperty] private string? error;
@@ -54,14 +55,14 @@ public partial class QueuedTaskViewModel : ObservableObject
     public bool IsPending => State == QueuedTaskState.Pending;
     public bool IsRunning => State == QueuedTaskState.Running;
     public bool HasStarted => State != QueuedTaskState.Pending;
-    public string ProgressText => IsIndeterminate ? "进行中" : $"{Progress:0}%";
+    public string ProgressText => IsIndeterminate ? Text.Get("Common", "InProgress") : Text.Format("QueuedTask", "ProgressPercent", Progress);
     public string StatusText => State switch
     {
-        QueuedTaskState.Running => "执行中",
-        QueuedTaskState.Completed => "已完成",
-        QueuedTaskState.Canceled => "已取消",
-        QueuedTaskState.Failed => "失败",
-        _ => "等待执行"
+        QueuedTaskState.Running => Text.Get("QueuedTask", "Running"),
+        QueuedTaskState.Completed => Text.Get("Common", "Completed"),
+        QueuedTaskState.Canceled => Text.Get("Common", "Canceled"),
+        QueuedTaskState.Failed => Text.Get("Common", "Failed"),
+        _ => Text.Get("Common", "Waiting")
     };
 
     internal QueuedTaskViewModel(string title, long order, IReadOnlyList<(OperationStep Kind, string Title)> steps,
@@ -111,9 +112,9 @@ public partial class QueuedTaskViewModel : ObservableObject
         State = final; Error = message; IsIndeterminate = false; IsExpanded = false;
         CurrentItem = final switch
         {
-            QueuedTaskState.Completed => "任务完成",
-            QueuedTaskState.Canceled => "任务已取消",
-            _ => "任务未完成"
+            QueuedTaskState.Completed => Text.Get("Common", "TaskCompleted"),
+            QueuedTaskState.Canceled => Text.Get("Common", "TaskCanceled"),
+            _ => Text.Get("Common", "TaskIncomplete")
         };
         if (final == QueuedTaskState.Completed)
         {

@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -17,10 +18,10 @@ public sealed class ModpackImportService : IModpackImporter
 
     public static IReadOnlyList<(OperationStep Kind, string Title)> Steps { get; } = new[]
     {
-        (OperationStep.Preparing, "检查整合包"), (OperationStep.Client, "下载客户端"),
-        (OperationStep.Libraries, "下载依赖库"), (OperationStep.Assets, "下载资源文件"),
-        (OperationStep.Loader, "安装加载器"), (OperationStep.ModpackFiles, "下载整合包文件"),
-        (OperationStep.Overrides, "应用覆盖文件"), (OperationStep.Saving, "校验整合包")
+        (OperationStep.Preparing, Text.Get("ModpackImportService", "CheckPack")), (OperationStep.Client, Text.Get("Common", "DownloadClient")),
+        (OperationStep.Libraries, Text.Get("Common", "DownloadLibraries")), (OperationStep.Assets, Text.Get("Common", "DownloadAssets")),
+        (OperationStep.Loader, Text.Get("ModpackImportService", "InstallLoader")), (OperationStep.ModpackFiles, Text.Get("ModpackImportService", "DownloadPackFiles")),
+        (OperationStep.Overrides, Text.Get("ModpackImportService", "ApplyOverrides")), (OperationStep.Saving, Text.Get("ModpackImportService", "VerifyPack"))
     };
 
     public ModpackImportService(InstanceManager instances, VersionResolver versions, GameDownloadService games,
@@ -39,7 +40,7 @@ public sealed class ModpackImportService : IModpackImporter
         await using var archive = ModpackArchiveReader.Open(request.ArchivePath);
         var pack = await _reader.ReadAsync(archive, Path.GetFileName(request.ArchivePath), context.CancellationToken);
         if (request.ExpectedArchiveSha256 is { } expected && !pack.ArchiveSha256.Equals(expected, StringComparison.OrdinalIgnoreCase))
-            throw new InstanceConflictException("整合包在预览后发生变化，请重新选择。");
+            throw new InstanceConflictException(Text.Get("ModpackImportService", "ArchiveChanged"));
         string[] selected = request.SelectedOptionalFiles?.ToArray() ?? Array.Empty<string>();
         ValidateSelection(pack, selected);
         foreach (var file in pack.Files.Where(x => x.Path is not null)) ModpackSafety.ValidateTarget(file.Path!, request.DirectoryName);
@@ -50,12 +51,12 @@ public sealed class ModpackImportService : IModpackImporter
         {
             context.Progress?.Report(new(context.OperationId, default, resolved.Count + 1, OperationStage.Downloading,
                 null, (double)resolved.Count / references.Length, 0, null,
-                $"预检查 CurseForge 文件 {resolved.Count + 1}/{references.Length}", OperationStep.Preparing));
+                Text.Format("ModpackImportService", "PrecheckingFiles", resolved.Count + 1, references.Length), OperationStep.Preparing));
             var resolution = await _curseforge.ResolveAsync(file, context.CancellationToken);
             if (resolution.File is not { } descriptor)
-                throw new InvalidOperationException("CurseForge 文件元数据预检查失败：" + file.Key + "；" + resolution.Missing?.Reason);
+                throw new InvalidOperationException(Text.Format("ModpackImportService", "PrecheckFailed", file.Key, resolution.Missing?.Reason));
             if (descriptor.Key != file.Key || descriptor.CurseForge != file.CurseForge || descriptor.ArchiveEntry is not null)
-                throw new InvalidDataException("CurseForge 文件解析结果与清单不一致。");
+                throw new InvalidDataException(Text.Get("ModpackImportService", "ResolvedFileMismatch"));
             ModpackSafety.ValidateFile(descriptor);
             ModpackSafety.ValidateTarget(descriptor.Path!, request.DirectoryName);
             resolved[file.Key] = descriptor;
@@ -77,7 +78,7 @@ public sealed class ModpackImportService : IModpackImporter
         if (file is null) return;
         var resolution = await _curseforge.ResolveAsync(file, token);
         if (resolution.File is null)
-            throw new InvalidOperationException("CurseForge 文件元数据预检查失败：" + file.Key + "；" + resolution.Missing?.Reason);
+            throw new InvalidOperationException(Text.Format("ModpackImportService", "PrecheckFailed", file.Key, resolution.Missing?.Reason));
     }
 
     public async Task<ModpackImportResult> ResumeAsync(ModpackResumeRequest request, OperationContext context)
@@ -85,14 +86,14 @@ public sealed class ModpackImportService : IModpackImporter
         ValidateContext(context);
         var metadata = await _instances.GetAsync(request.InstanceId, context.CancellationToken);
         var state = await GetStateAsync(request.InstanceId, context.CancellationToken)
-            ?? throw new InvalidOperationException("实例没有整合包导入记录。");
+            ?? throw new InvalidOperationException(Text.Get("ModpackImportService", "ImportRecordMissing"));
         await using var archive = ModpackArchiveReader.Open(request.ArchivePath ?? state.ArchivePath);
         var pack = await _reader.ReadAsync(archive, Path.GetFileName(request.ArchivePath ?? state.ArchivePath), context.CancellationToken);
         if (!pack.ArchiveSha256.Equals(state.ArchiveSha256, StringComparison.OrdinalIgnoreCase))
-            throw new InstanceConflictException("继续导入必须使用内容相同的分发包。");
+            throw new InstanceConflictException(Text.Get("ModpackImportService", "ResumeArchiveMismatch"));
         ValidateSelection(pack, state.SelectedOptionalFiles);
         if (pack.MinecraftVersion != metadata.MinecraftVersionId || state.Name != pack.Name || state.Version != pack.Version)
-            throw new InstanceConflictException("整合包与实例导入记录不一致。");
+            throw new InstanceConflictException(Text.Get("ModpackImportService", "ImportRecordMismatch"));
         return await ExecuteAsync(metadata, state with { ArchivePath = InstanceManager.Normal(request.ArchivePath ?? state.ArchivePath) },
             pack, archive, request.LocalFiles, context);
     }
@@ -104,11 +105,11 @@ public sealed class ModpackImportService : IModpackImporter
         string file = StatePath(paths);
         if (!File.Exists(file)) return null;
         var state = JsonSerializer.Deserialize<ModpackImportState>(await InstanceManager.ReadBytesAsync(file, 32 * 1024 * 1024, token), InstanceManager.JsonOptions)
-            ?? throw new InvalidDataException("整合包导入记录为空。");
+            ?? throw new InvalidDataException(Text.Get("ModpackImportService", "ImportRecordEmpty"));
         if (state.FormatVersion != 1 || state.InstanceId != id || state.DirectoryName != metadata.DirectoryName ||
             !Enum.IsDefined(state.Status) || state.SelectedOptionalFiles is null || state.ResolvedFiles is null ||
             state.WrittenFiles is null || state.MissingFiles is null)
-            throw new InvalidDataException("整合包导入记录不合法。");
+            throw new InvalidDataException(Text.Get("ModpackImportService", "InvalidImportRecord"));
         ModpackSafety.ValidateHashes(new(Sha256: state.ArchiveSha256));
         foreach (var written in state.WrittenFiles)
         {
@@ -150,12 +151,12 @@ public sealed class ModpackImportService : IModpackImporter
         {
             state = state with { Status = ModpackImportStatus.Importing, Error = null };
             await Persist();
-            Report(OperationStep.Preparing, "解析整合包文件", 0);
+            Report(OperationStep.Preparing, Text.Get("ModpackImportService", "ResolvingFiles"), 0);
             var optionalKeys = state.SelectedOptionalFiles.ToHashSet(StringComparer.Ordinal);
             var selected = pack.Files.Where(x => !x.Optional || optionalKeys.Contains(x.Key)).ToArray();
             var curseforgeKeys = selected.Where(x => x.CurseForge is not null).Select(x => x.Key).ToHashSet(StringComparer.Ordinal);
             if (localFiles is not null && localFiles.Keys.Any(x => !curseforgeKeys.Contains(x)))
-                throw new ArgumentException("本地补齐包含未知或未选择的文件。");
+                throw new ArgumentException(Text.Get("ModpackImportService", "InvalidLocalFiles"));
             var files = new List<ModpackFile>();
             foreach (var file in selected)
             {
@@ -166,26 +167,26 @@ public sealed class ModpackImportService : IModpackImporter
                     var resolution = await _curseforge.ResolveAsync(file, token);
                     if (resolution.File is null)
                     {
-                        SetMissing(resolution.Missing ?? new(file.Key, "无法解析 CurseForge 文件。"));
-                        throw new InvalidOperationException("CurseForge 文件元数据预检查失败：" + file.Key + "；" + resolution.Missing?.Reason);
+                        SetMissing(resolution.Missing ?? new(file.Key, Text.Get("ModpackImportService", "FileResolutionFailed")));
+                        throw new InvalidOperationException(Text.Format("ModpackImportService", "PrecheckFailed", file.Key, resolution.Missing?.Reason));
                     }
                     descriptor = resolution.File;
                     if (descriptor.Key != file.Key || descriptor.CurseForge != file.CurseForge || descriptor.ArchiveEntry is not null)
-                        throw new InvalidDataException("CurseForge 文件解析结果与清单不一致。");
+                        throw new InvalidDataException(Text.Get("ModpackImportService", "ResolvedFileMismatch"));
                     resolved[file.Key] = descriptor;
                     if (resolution.Missing is { } issue) SetMissing(issue);
                     else missing.RemoveAll(x => x.Key == file.Key);
                 }
                 ModpackSafety.ValidateFile(descriptor);
                 if (descriptor.CurseForge != file.CurseForge || descriptor.Key != file.Key || descriptor.ArchiveEntry is not null)
-                    throw new InvalidDataException("已保存的文件信息与清单不一致。");
+                    throw new InvalidDataException(Text.Get("ModpackImportService", "SavedFileMismatch"));
                 files.Add(descriptor);
             }
             var remotePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var file in files)
             {
                 ModpackSafety.ValidateTarget(file.Path!, metadata.DirectoryName);
-                if (file.ArchiveEntry is null && !remotePaths.Add(file.Path!)) throw new InvalidDataException("多个下载文件使用相同目标路径。");
+                if (file.ArchiveEntry is null && !remotePaths.Add(file.Path!)) throw new InvalidDataException(Text.Get("ModpackImportService", "DuplicateTargetPath"));
             }
             ModpackArchiveReader.ValidateTargets(files);
             var effective = files.GroupBy(x => x.Path!, StringComparer.OrdinalIgnoreCase).Select(x => x.Last()).ToArray();
@@ -193,7 +194,7 @@ public sealed class ModpackImportService : IModpackImporter
             missing.RemoveAll(x => resolved.TryGetValue(x.Key, out var descriptor) && descriptor.Path is not null && !effectiveKeys.Contains(x.Key));
             var effectivePaths = effective.Select(x => x.Path!).ToHashSet(StringComparer.OrdinalIgnoreCase);
             if (written.Keys.Any(x => !effectivePaths.Contains(x)) || state.PendingWrite is { } p && !effectivePaths.Contains(p.Path))
-                throw new InstanceConflictException("已写入文件与整合包清单不一致。");
+                throw new InstanceConflictException(Text.Get("ModpackImportService", "WrittenFileMismatch"));
             if (state.PendingWrite is { } recovery)
             {
                 await using var lease = await _instances.LockInstanceAsync(metadata.Id, token);
@@ -201,20 +202,20 @@ public sealed class ModpackImportService : IModpackImporter
                 if (File.Exists(target))
                 {
                     if (await InstanceManager.Sha256FileAsync(target, token) != recovery.Sha256)
-                        throw new InstanceConflictException("未完成的文件提交存在内容冲突：" + recovery.Path);
+                        throw new InstanceConflictException(Text.Format("ModpackImportService", "RecoveryFileConflict", recovery.Path));
                     written[recovery.Path] = recovery.Sha256;
                 }
                 state = state with { PendingWrite = null };
             }
             await Persist();
-            Report(OperationStep.Preparing, "整合包检查完成", 1);
+            Report(OperationStep.Preparing, Text.Get("ModpackImportService", "PackChecked"), 1);
 
             if (!state.GameInstalled)
             {
-                if (metadata.InstalledLoader is not null) throw new InstanceConflictException("未完成的游戏安装包含意外加载器。");
+                if (metadata.InstalledLoader is not null) throw new InstanceConflictException(Text.Get("ModpackImportService", "UnexpectedLoader"));
                 var manifest = await _versions.GetManifestAsync(token);
                 var version = manifest.Versions.FirstOrDefault(x => x.Id == pack.MinecraftVersion)
-                    ?? throw new InvalidDataException("整合包指定的 Minecraft 版本不存在。");
+                    ?? throw new InvalidDataException(Text.Get("ModpackImportService", "MinecraftVersionMissing"));
                 metadata = await _games.InstallAsync(metadata.Id, version, context with
                 {
                     Progress = new MappedProgress(context.Progress, p => p.Step == OperationStep.Saving
@@ -226,17 +227,17 @@ public sealed class ModpackImportService : IModpackImporter
             else
             {
                 if (!File.Exists(paths.ClientJarFile) || !File.Exists(paths.BaseVersionJsonFile) || !File.Exists(paths.VersionJsonFile))
-                    throw new InstanceConflictException("已完成的游戏安装文件缺失，请先修复实例。");
-                Report(OperationStep.Assets, "游戏本体已安装", 1);
+                    throw new InstanceConflictException(Text.Get("ModpackImportService", "CompletedGameFilesMissing"));
+                Report(OperationStep.Assets, Text.Get("ModpackImportService", "GameInstalled"), 1);
             }
             metadata = await _instances.GetAsync(metadata.Id, token);
             if (metadata.InstalledLoader is not null && metadata.InstalledLoader != pack.Loader)
-                throw new InstanceConflictException("实例加载器与整合包不一致。");
+                throw new InstanceConflictException(Text.Get("ModpackImportService", "LoaderMismatch"));
             if (pack.Loader is { } loader)
             {
                 if (metadata.InstalledLoader is null)
                 {
-                    if (state.LoaderInstalled) throw new InstanceConflictException("整合包加载器已被移除。");
+                    if (state.LoaderInstalled) throw new InstanceConflictException(Text.Get("ModpackImportService", "LoaderRemoved"));
                     await _loaders.InstallAsync(new(metadata.Id, metadata.Revision, loader, metadata.Editable.JavaExecutable), context with
                     {
                         Progress = new MappedProgress(context.Progress, p => p with { Step = OperationStep.Loader,
@@ -248,7 +249,7 @@ public sealed class ModpackImportService : IModpackImporter
             }
             state = state with { LoaderInstalled = true };
             await Persist();
-            Report(OperationStep.Loader, "加载器处理完成", 1);
+            Report(OperationStep.Loader, Text.Get("ModpackImportService", "LoaderCompleted"), 1);
 
             archiveStream.Position = 0;
             using var archive = new ZipArchive(archiveStream, ZipArchiveMode.Read, true);
@@ -259,14 +260,14 @@ public sealed class ModpackImportService : IModpackImporter
             {
                 bool download = file.ArchiveEntry is null;
                 int done = download ? ++downloadsDone : ++overridesDone;
-                Report(download ? OperationStep.ModpackFiles : OperationStep.Overrides, "文件已校验：" + file.Path,
+                Report(download ? OperationStep.ModpackFiles : OperationStep.Overrides, Text.Format("ModpackImportService", "FileVerified", file.Path),
                     (double)done / Math.Max(1, download ? downloadCount : overrideCount));
             }
             foreach (var file in effective.OrderBy(x => x.ArchiveEntry is null ? 0 : 1))
             {
                 token.ThrowIfCancellationRequested();
                 var step = file.ArchiveEntry is null ? OperationStep.ModpackFiles : OperationStep.Overrides;
-                Report(step, "安装文件：" + file.Path, null);
+                Report(step, Text.Format("ModpackImportService", "InstallingFile", file.Path), null);
                 string target = InstanceManager.Child(paths.GameDirectory, file.Path!);
                 await using var lease = await _instances.LockInstanceAsync(metadata.Id, token);
                 string? current = File.Exists(target) ? await InstanceManager.Sha256FileAsync(target, token) : null;
@@ -279,15 +280,15 @@ public sealed class ModpackImportService : IModpackImporter
                 }
                 if (written.TryGetValue(file.Path!, out string? installedHash))
                 {
-                    if (current != installedHash) throw new InstanceConflictException("整合包文件已修改或丢失，未覆盖：" + file.Path);
+                    if (current != installedHash) throw new InstanceConflictException(Text.Format("ModpackImportService", "ModifiedFileConflict", file.Path));
                     missing.RemoveAll(x => x.Key == file.Key);
                     ReportFile(file);
                     continue;
                 }
-                if (current is not null) throw new InstanceConflictException("整合包目标文件已经存在，未覆盖：" + file.Path);
+                if (current is not null) throw new InstanceConflictException(Text.Format("ModpackImportService", "ExistingFileConflict", file.Path));
                 if (file.Downloads.Count == 0 && file.ArchiveEntry is null && (localFiles is null || !localFiles.ContainsKey(file.Key)))
                 {
-                    if (!missing.Any(x => x.Key == file.Key)) missing.Add(new(file.Key, "需要手动下载并提供本地文件。"));
+                    if (!missing.Any(x => x.Key == file.Key)) missing.Add(new(file.Key, Text.Get("ModpackImportService", "ManualFileRequired")));
                     continue;
                 }
                 string cache = InstanceManager.Child(paths.GameDirectory, ".launcher/modpack/payload.tmp");
@@ -298,7 +299,7 @@ public sealed class ModpackImportService : IModpackImporter
                     localFiles?.TryGetValue(file.Key, out local);
                     if (file.ArchiveEntry is { } entryName)
                     {
-                        var entry = archive.GetEntry(entryName) ?? throw new InvalidDataException("覆盖文件缺失。");
+                        var entry = archive.GetEntry(entryName) ?? throw new InvalidDataException(Text.Get("ModpackImportService", "OverrideMissing"));
                         await using var input = entry.Open();
                         digest = await StageAsync(input, cache, file, token);
                     }
@@ -325,7 +326,7 @@ public sealed class ModpackImportService : IModpackImporter
                 }
                 ReportFile(file);
             }
-            Report(OperationStep.Saving, "校验整合包安装结果", 0);
+            Report(OperationStep.Saving, Text.Get("ModpackImportService", "VerifyingResult"), 0);
             await using (var lease = await _instances.LockInstanceAsync(metadata.Id, token))
             {
                 var baseVersion = await InstanceManager.ReadObjectAsync(paths.BaseVersionJsonFile, token);
@@ -333,18 +334,18 @@ public sealed class ModpackImportService : IModpackImporter
                 VersionResolver.ValidateSha1(clientHash);
                 await using (var client = ModpackArchiveReader.Open(paths.ClientJarFile))
                     if (!Convert.ToHexString(await SHA1.HashDataAsync(client, token)).Equals(clientHash, StringComparison.OrdinalIgnoreCase))
-                        throw new DownloadIntegrityException("实例客户端摘要校验失败。");
+                        throw new DownloadIntegrityException(Text.Get("ModpackImportService", "ClientHashMismatch"));
                 foreach (var item in written)
                 {
                     string target = InstanceManager.Child(paths.GameDirectory, item.Key);
                     if (!File.Exists(target) || await InstanceManager.Sha256FileAsync(target, token) != item.Value)
-                        throw new InstanceConflictException("整合包文件最终校验失败：" + item.Key);
+                        throw new InstanceConflictException(Text.Format("ModpackImportService", "FinalFileHashMismatch", item.Key));
                 }
                 state = state with { Status = missing.Count == 0 ? ModpackImportStatus.Completed : ModpackImportStatus.NeedsFiles,
                     MissingFiles = missing.ToArray(), ResolvedFiles = resolved, WrittenFiles = written };
                 await SaveAsync(metadata, state);
             }
-            Report(OperationStep.Saving, missing.Count == 0 ? "整合包导入完成" : $"整合包仍有 {missing.Count} 项文件待补齐", 1);
+            Report(OperationStep.Saving, missing.Count == 0 ? Text.Get("ModpackImportService", "ImportCompleted") : Text.Format("ModpackImportService", "FilesStillRequired", missing.Count), 1);
             return new(await _instances.GetAsync(metadata.Id, token), state);
         }
         catch (Exception error)
@@ -372,12 +373,12 @@ public sealed class ModpackImportService : IModpackImporter
     {
         var optional = pack.Files.Where(x => x.Optional).Select(x => x.Key).ToHashSet(StringComparer.Ordinal);
         if (selected.Distinct(StringComparer.Ordinal).Count() != selected.Count || selected.Any(x => !optional.Contains(x)))
-            throw new ArgumentException("整合包可选文件选择无效。");
+            throw new ArgumentException(Text.Get("ModpackImportService", "InvalidOptionalSelection"));
     }
 
     private static void ValidateContext(OperationContext context)
     {
-        if (context.OperationId == Guid.Empty) throw new ArgumentException("操作标识不能为空。");
+        if (context.OperationId == Guid.Empty) throw new ArgumentException(Text.Get("ModpackImportService", "OperationIdEmpty"));
         context.CancellationToken.ThrowIfCancellationRequested();
     }
 

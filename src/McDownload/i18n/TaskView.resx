@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Back" xml:space="preserve"><value>← 返回</value></data>
+  <data name="Heading" xml:space="preserve"><value>任务队列</value></data>
+  <data name="NoTasksHint" xml:space="preserve"><value>还没有任务，在“下载游戏”中选择版本并添加安装任务。</value></data>
+  <data name="RemoveFromQueue" xml:space="preserve"><value>移出队列</value></data>
+  <data name="CancelCurrentItem" xml:space="preserve"><value>取消当前项</value></data>
+  <data name="OverallProgress" xml:space="preserve"><value>整体进度</value></data>
+  <data name="DetailedProgress" xml:space="preserve"><value>详细进度</value></data>
+  <data name="RuntimeLogs" xml:space="preserve"><value>运行日志</value></data>
+</root>

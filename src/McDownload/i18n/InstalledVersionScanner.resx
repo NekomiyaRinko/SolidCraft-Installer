@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="DuplicateInstanceId" xml:space="preserve"><value>实例标识重复，已禁止修改。</value></data>
+  <data name="InheritanceCycleOrDepth" xml:space="preserve"><value>版本继承存在循环或超过深度上限。</value></data>
+  <data name="InstanceIdEmpty" xml:space="preserve"><value>实例标识为空。</value></data>
+  <data name="LoaderUnavailable" xml:space="preserve"><value>加载器信息不可用</value></data>
+  <data name="MetadataEmpty" xml:space="preserve"><value>实例元数据为空。</value></data>
+  <data name="ParentMissing" xml:space="preserve"><value>缺少本地父版本：{0}</value></data>
+  <data name="ReadFailed" xml:space="preserve"><value>版本读取失败：{0}</value></data>
+  <data name="Unrecognized" xml:space="preserve"><value>未识别</value></data>
+</root>

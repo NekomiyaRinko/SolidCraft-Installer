@@ -1,8 +1,8 @@
-<UserControl x:Class="McDownload.View.LicensesView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:model="clr-namespace:McDownload.Model">
+<UserControl x:Class="McDownload.View.LicensesView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:model="clr-namespace:McDownload.Model" xmlns:i18n="clr-namespace:McDownload.i18n">
     <Grid>
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-        <Button Content="‹ 返回关于" Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="About" HorizontalAlignment="Left" Style="{StaticResource MutedButton}" Margin="0,0,0,12"/>
-        <TextBlock Grid.Row="1" Text="开放源代码许可" Style="{StaticResource Heading}"/>
+        <Button Content="{i18n:Loc LicensesView, BackToAbout}" Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="About" HorizontalAlignment="Left" Style="{StaticResource MutedButton}" Margin="0,0,0,12"/>
+        <TextBlock Grid.Row="1" Text="{i18n:Loc LicensesView, Heading}" Style="{StaticResource Heading}"/>
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions><ColumnDefinition Width="240"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <TreeView x:Name="LicenseTree" ItemsSource="{Binding Groups}" Background="White" BorderThickness="0" Padding="8" SelectedItemChanged="OnSelectedItemChanged" Loaded="OnTreeLoaded" ScrollViewer.HorizontalScrollBarVisibility="Disabled">

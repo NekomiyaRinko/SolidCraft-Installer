@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -41,7 +42,7 @@ public sealed class VersionResolver : IVersionResolver
         {
             var root = ParseObject(bytes);
             var versions = new List<MinecraftVersionEntry>();
-            foreach (JsonNode? entry in root["versions"] as JsonArray ?? throw Error("Manifest", "版本清单缺少 versions。"))
+            foreach (JsonNode? entry in root["versions"] as JsonArray ?? throw Error("Manifest", McDownload.i18n.Text.Get("VersionResolver", "ManifestVersionsMissing")))
             {
                 string id = Text(entry, "id");
                 InstanceManager.ValidateName(id);
@@ -51,7 +52,7 @@ public sealed class VersionResolver : IVersionResolver
                     "snapshot" => MinecraftVersionChannel.Snapshot,
                     "old_beta" => MinecraftVersionChannel.OldBeta,
                     "old_alpha" => MinecraftVersionChannel.OldAlpha,
-                    _ => throw Error("Manifest", "版本类型不受支持。")
+                    _ => throw Error("Manifest", McDownload.i18n.Text.Get("VersionResolver", "UnsupportedVersionType"))
                 };
                 var uri = new Uri(Text(entry, "url"), UriKind.Absolute);
                 RequireHttps(uri);
@@ -60,14 +61,14 @@ public sealed class VersionResolver : IVersionResolver
                 versions.Add(new(id, channel, uri, sha1));
             }
             if (versions.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != versions.Count)
-                throw Error("Manifest", "版本清单包含重复标识。");
+                throw Error("Manifest", McDownload.i18n.Text.Get("VersionResolver", "DuplicateVersionId"));
             string release = Text(root["latest"], "release"), snapshot = Text(root["latest"], "snapshot");
             if (!versions.Any(x => x.Id == release && x.Channel == MinecraftVersionChannel.Release) ||
-                !versions.Any(x => x.Id == snapshot)) throw Error("Manifest", "清单的最新版本引用不存在。");
+                !versions.Any(x => x.Id == snapshot)) throw Error("Manifest", McDownload.i18n.Text.Get("VersionResolver", "LatestVersionMissing"));
             return new(release, snapshot, versions.AsReadOnly());
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or FormatException or InstanceValidationException)
-        { throw new VersionResolutionException("版本清单内容不合法。", ex); }
+        { throw new VersionResolutionException(McDownload.i18n.Text.Get("VersionResolver", "InvalidManifest"), ex); }
     }
 
     public async Task<VersionDocument> FetchVersionJsonAsync(MinecraftVersionEntry version, CancellationToken cancellationToken)
@@ -75,15 +76,15 @@ public sealed class VersionResolver : IVersionResolver
         ArgumentNullException.ThrowIfNull(version);
         var manifest = await GetManifestAsync(cancellationToken);
         var canonical = manifest.Versions.FirstOrDefault(x => x.Id == version.Id)
-            ?? throw Error("VersionMissing", "官方版本清单中不存在该版本。");
+            ?? throw Error("VersionMissing", McDownload.i18n.Text.Get("VersionResolver", "VersionMissing"));
         if (canonical.JsonUri != version.JsonUri || !canonical.Sha1.Equals(version.Sha1, StringComparison.OrdinalIgnoreCase))
-            throw Error("Manifest", "版本地址或摘要与官方清单不一致。");
+            throw Error("Manifest", McDownload.i18n.Text.Get("VersionResolver", "VersionAddressMismatch"));
         var json = await _fetcher.ReadAsync(canonical.JsonUri, 16 * 1024 * 1024, bytes =>
         {
             if (!Convert.ToHexString(SHA1.HashData(bytes)).Equals(canonical.Sha1, StringComparison.OrdinalIgnoreCase))
-                throw new DownloadIntegrityException("版本 JSON 的 SHA-1 校验失败。");
+                throw new DownloadIntegrityException(McDownload.i18n.Text.Get("VersionResolver", "VersionHashMismatch"));
             var document = ParseObject(bytes);
-            if (Text(document, "id") != canonical.Id) throw Error("VersionId", "版本 JSON 标识不一致。");
+            if (Text(document, "id") != canonical.Id) throw Error("VersionId", McDownload.i18n.Text.Get("VersionResolver", "VersionIdMismatch"));
             return document;
         }, cancellationToken);
         return new(canonical.Id, json);
@@ -95,7 +96,7 @@ public sealed class VersionResolver : IVersionResolver
         await using var lease = await _instances.LockInstanceAsync(instanceId, cancellationToken);
         var metadata = await _instances.ReadLockedAsync(directory, cancellationToken);
         var json = await InstanceManager.ReadObjectAsync(_instances.Paths(metadata).VersionJsonFile, cancellationToken);
-        if (Text(json, "id") != metadata.DirectoryName) throw Error("VersionId", "实例版本标识与目录不一致。");
+        if (Text(json, "id") != metadata.DirectoryName) throw Error("VersionId", McDownload.i18n.Text.Get("VersionResolver", "InstanceDirectoryMismatch"));
         return new(metadata.DirectoryName, json);
     }
 
@@ -114,7 +115,7 @@ public sealed class VersionResolver : IVersionResolver
         InheritanceResolutionOptions options, CancellationToken token)
     {
         if (options.MaxDepth is < 1 or > 256) throw new ArgumentOutOfRangeException(nameof(options));
-        if (options.InstanceId != metadata.Id) throw Error("Scope", "继承解析实例不一致。");
+        if (options.InstanceId != metadata.Id) throw Error("Scope", McDownload.i18n.Text.Get("VersionResolver", "InstanceScopeMismatch"));
         var visiting = new HashSet<string>(StringComparer.Ordinal);
         var chain = new List<VersionDocument>();
         var paths = _instances.Paths(metadata);
@@ -122,10 +123,10 @@ public sealed class VersionResolver : IVersionResolver
         async Task<VersionDocument> Visit(VersionDocument current, int depth)
         {
             token.ThrowIfCancellationRequested();
-            if (depth >= options.MaxDepth) throw Error("DepthLimit", "版本继承深度超限。");
+            if (depth >= options.MaxDepth) throw Error("DepthLimit", McDownload.i18n.Text.Get("VersionResolver", "DepthLimit"));
             InstanceManager.ValidateName(current.Id);
-            if (Text(current.Json, "id") != current.Id) throw Error("VersionId", "文档标识与 JSON 标识不一致。");
-            if (!visiting.Add(current.Id)) throw Error("Cycle", "版本继承存在循环。");
+            if (Text(current.Json, "id") != current.Id) throw Error("VersionId", McDownload.i18n.Text.Get("VersionResolver", "DocumentIdMismatch"));
+            if (!visiting.Add(current.Id)) throw Error("Cycle", McDownload.i18n.Text.Get("VersionResolver", "InheritanceCycle"));
             VersionDocument effective = new(current.Id, (JsonObject)current.Json.DeepClone());
             if (current.Json["inheritsFrom"] is JsonNode parentNode)
             {
@@ -138,15 +139,15 @@ public sealed class VersionResolver : IVersionResolver
                 if (File.Exists(InstanceManager.Extended(local)))
                 {
                     var json = await InstanceManager.ReadObjectAsync(local, token);
-                    if (Text(json, "id") != parentId) throw Error("VersionId", "父版本快照标识不一致。");
+                    if (Text(json, "id") != parentId) throw Error("VersionId", McDownload.i18n.Text.Get("VersionResolver", "ParentSnapshotIdMismatch"));
                     parent = new(parentId, json);
                 }
                 else
                 {
-                    if (!options.AllowOfficialDownload) throw Error("ParentMissing", $"父版本不存在：{parentId}");
+                    if (!options.AllowOfficialDownload) throw Error("ParentMissing", McDownload.i18n.Text.Format("VersionResolver", "ParentMissing", parentId));
                     var manifest = await GetManifestAsync(token);
                     var entry = manifest.Versions.FirstOrDefault(x => x.Id == parentId)
-                        ?? throw Error("ParentMissing", $"父版本不存在：{parentId}");
+                        ?? throw Error("ParentMissing", McDownload.i18n.Text.Format("VersionResolver", "ParentMissing", parentId));
                     parent = await FetchVersionJsonAsync(entry, token);
                 }
                 effective = Merge(await Visit(parent, depth + 1), current);
@@ -167,7 +168,7 @@ public sealed class VersionResolver : IVersionResolver
         var json = MergeObject(parent.Json, child.Json, "");
         json["id"] = child.Id;
         if (json["arguments"] is JsonObject && json["minecraftArguments"] is not null)
-            throw Error("Arguments", "版本同时包含结构化参数与 minecraftArguments。");
+            throw Error("Arguments", McDownload.i18n.Text.Get("VersionResolver", "ConflictingArguments"));
         return new(child.Id, json);
     }
 
@@ -176,15 +177,15 @@ public sealed class VersionResolver : IVersionResolver
         ArgumentNullException.ThrowIfNull(resolvedBase);
         ArgumentNullException.ThrowIfNull(activePatches);
         InstanceManager.ValidateName(outputVersionId);
-        if (resolvedBase.Json["inheritsFrom"] is not null) throw Error("Base", "基础版本尚未完成继承解析。");
+        if (resolvedBase.Json["inheritsFrom"] is not null) throw Error("Base", McDownload.i18n.Text.Get("VersionResolver", "UnresolvedBase"));
         if (activePatches.Select(x => x.PatchId).Distinct().Count() != activePatches.Count ||
             activePatches.Count(x => x.Kind == VersionPatchKind.Loader) > 1)
-            throw Error("Patch", "生效 patch 集合不合法。");
+            throw Error("Patch", McDownload.i18n.Text.Get("VersionResolver", "InvalidActivePatches"));
         VersionDocument result = new(resolvedBase.Id, (JsonObject)resolvedBase.Json.DeepClone());
         foreach (var patch in activePatches.OrderBy(x => x.Order).ThenBy(x => x.PatchId))
         {
             if (patch.PatchId == Guid.Empty || (patch.Kind == VersionPatchKind.Loader) != (patch.Loader is not null))
-                throw Error("Patch", "patch 归属不合法。");
+                throw Error("Patch", McDownload.i18n.Text.Get("VersionResolver", "InvalidPatchOwnership"));
             var json = (JsonObject)patch.Json.DeepClone();
             json.Remove("inheritsFrom");
             json.Remove("jar");
@@ -217,7 +218,7 @@ public sealed class VersionResolver : IVersionResolver
         json["inheritsFrom"] = parentId;
         var check = Merge(resolvedBase, new(effective.Id, json));
         check.Json.Remove("inheritsFrom");
-        if (!JsonNode.DeepEquals(check.Json, effective.Json)) throw Error("Patch", "版本内容不能表示为继承子层。");
+        if (!JsonNode.DeepEquals(check.Json, effective.Json)) throw Error("Patch", McDownload.i18n.Text.Get("VersionResolver", "UnrepresentableChild"));
         return new(effective.Id, json);
     }
 
@@ -248,7 +249,7 @@ public sealed class VersionResolver : IVersionResolver
         var indexes = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (JsonNode? library in (parent ?? new JsonArray()).Concat(child))
         {
-            if (library is not JsonObject item) throw Error("Library", "依赖库条目必须是对象。");
+            if (library is not JsonObject item) throw Error("Library", McDownload.i18n.Text.Get("VersionResolver", "LibraryObjectRequired"));
             string key = LibraryKey(item);
             if (indexes.TryGetValue(key, out int index)) result[index] = item.DeepClone();
             else { indexes.Add(key, result.Count); result.Add(item.DeepClone()); }
@@ -262,7 +263,7 @@ public sealed class VersionResolver : IVersionResolver
         string[] extension = name.Split('@');
         string[] parts = extension[0].Split(':');
         if (extension.Length > 2 || parts.Length is < 3 or > 4 || parts.Any(string.IsNullOrWhiteSpace))
-            throw Error("Library", "Maven 坐标不合法。");
+            throw Error("Library", McDownload.i18n.Text.Get("VersionResolver", "InvalidMavenCoordinate"));
         return string.Join(':', parts[0], parts[1], parts.Length == 4 ? parts[3] : "", extension.Length == 2 ? extension[1] : "jar")
             + "|" + Canonical(library["rules"]) + "|" + Canonical(library["natives"]);
     }
@@ -299,7 +300,7 @@ public sealed class VersionResolver : IVersionResolver
             {
                 var prefix = previous as JsonArray ?? new JsonArray();
                 if (arguments.Count < prefix.Count || prefix.Where((value, index) => !JsonNode.DeepEquals(value, arguments[index])).Any())
-                    throw Error("Arguments", "子层参数不保留父层参数前缀。");
+                    throw Error("Arguments", McDownload.i18n.Text.Get("VersionResolver", "ChildArgumentPrefixMismatch"));
                 var delta = new JsonArray();
                 foreach (var argument in arguments.Skip(prefix.Count)) delta.Add(argument?.DeepClone());
                 if (delta.Count > 0) result[item.Key] = delta;
@@ -315,7 +316,7 @@ public sealed class VersionResolver : IVersionResolver
     }
 
     internal static string Text(JsonNode? node, string property) =>
-        node?[property]?.GetValue<string>() is { Length: > 0 } value ? value : throw Error("Json", $"JSON 字段缺失：{property}");
+        node?[property]?.GetValue<string>() is { Length: > 0 } value ? value : throw Error("Json", McDownload.i18n.Text.Format("VersionResolver", "JsonFieldMissing", property));
 
     internal static string ParentId(InstanceMetadata metadata) => metadata.DirectoryName == metadata.MinecraftVersionId
         ? metadata.MinecraftVersionId + ".base." + metadata.Id.Value.ToString("N")
@@ -323,19 +324,19 @@ public sealed class VersionResolver : IVersionResolver
 
     internal static JsonObject ParseObject(byte[] bytes)
     {
-        try { return JsonNode.Parse(bytes) as JsonObject ?? throw Error("Json", "JSON 根节点必须是对象。"); }
-        catch (JsonException error) { throw new VersionResolutionException("JSON 格式不合法。", error); }
+        try { return JsonNode.Parse(bytes) as JsonObject ?? throw Error("Json", McDownload.i18n.Text.Get("VersionResolver", "JsonObjectRequired")); }
+        catch (JsonException error) { throw new VersionResolutionException(McDownload.i18n.Text.Get("VersionResolver", "InvalidJson"), error); }
     }
 
     internal static void ValidateSha1(string value)
     {
-        if (value.Length != 40 || !value.All(Uri.IsHexDigit)) throw new DownloadIntegrityException("SHA-1 摘要格式不合法。");
+        if (value.Length != 40 || !value.All(Uri.IsHexDigit)) throw new DownloadIntegrityException(McDownload.i18n.Text.Get("VersionResolver", "InvalidSha1"));
     }
 
     internal static void RequireHttps(Uri uri)
     {
         if (!uri.IsAbsoluteUri || uri.Scheme != Uri.UriSchemeHttps || !string.IsNullOrEmpty(uri.UserInfo))
-            throw new ArgumentException("下载地址必须是无凭证的 HTTPS 地址。");
+            throw new ArgumentException(McDownload.i18n.Text.Get("VersionResolver", "UnsafeDownloadAddress"));
     }
 
     private static VersionResolutionException Error(string code, string message)

@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.IO.Compression;
@@ -47,7 +48,7 @@ public sealed class DiagnosticLog : IDisposable
     public async Task<int> ExportAsync(string destination, CancellationToken token = default)
     {
         if (!Path.IsPathFullyQualified(destination) || !Path.GetExtension(destination).Equals(".zip", StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("请选择 ZIP 文件的完整保存路径。", nameof(destination));
+            throw new ArgumentException(Text.Get("DiagnosticLog", "ZipPathRequired"), nameof(destination));
         await _operations.WaitAsync(token);
         try
         {
@@ -72,7 +73,7 @@ public sealed class DiagnosticLog : IDisposable
                     while (remaining > 0)
                     {
                         int read = await input.ReadAsync(buffer.AsMemory(0, (int)Math.Min(remaining, buffer.Length)), cancellation);
-                        if (read == 0) throw new IOException("日志在导出期间被截断，请重试。");
+                        if (read == 0) throw new IOException(Text.Get("DiagnosticLog", "ExportTruncated"));
                         await entry.WriteAsync(buffer.AsMemory(0, read), cancellation);
                         remaining -= read;
                     }
@@ -94,8 +95,8 @@ public sealed class DiagnosticLog : IDisposable
                 ObjectDisposedException.ThrowIf(_disposed, this);
                 files = LogFiles();
                 _writer?.Dispose(); _writer = null; FilePath = null; Error = null;
-                Write("SESSION", "开始清理历史日志，后续日志写入新文件。");
-                if (Error is not null) throw new IOException("无法重新开始日志记录：" + Error);
+                Write("SESSION", Text.Get("DiagnosticLog", "ClearingLogs"));
+                if (Error is not null) throw new IOException(Text.Format("DiagnosticLog", "RestartFailed", Error));
             }
             foreach (string file in files)
             {
@@ -104,7 +105,7 @@ public sealed class DiagnosticLog : IDisposable
                 await _recycle(file, token);
                 InstanceManager.RequireRecycled(file);
             }
-            Write("INFO", $"已将 {files.Length} 份日志移至回收站。");
+            Write("INFO", Text.Format("DiagnosticLog", "LogsRecycled", files.Length));
             return files.Length;
         }
         finally { _operations.Release(); }

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Title" xml:space="preserve"><value>SolidCraft Installer · SCI</value></data>
+  <data name="TaskQueue" xml:space="preserve"><value>任务队列</value></data>
+  <data name="TaskAdded" xml:space="preserve"><value>已添加任务</value></data>
+  <data name="ProductAbbreviation" xml:space="preserve"><value>SCI</value></data>
+  <data name="ProductName" xml:space="preserve"><value>SolidCraft Installer</value></data>
+  <data name="Instances" xml:space="preserve"><value>我的实例</value></data>
+  <data name="DownloadGame" xml:space="preserve"><value>下载游戏</value></data>
+  <data name="Settings" xml:space="preserve"><value>设置</value></data>
+  <data name="About" xml:space="preserve"><value>关于</value></data>
+  <data name="DropToImport" xml:space="preserve"><value>松开以导入整合包</value></data>
+  <data name="ModpackFormats" xml:space="preserve"><value>Modrinth .mrpack / CurseForge .zip</value></data>
+  <data name="ModpackDropFailed" xml:space="preserve"><value>整合包拖入失败</value></data>
+</root>

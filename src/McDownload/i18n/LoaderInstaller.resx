@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="ArchiveFileMissing" xml:space="preserve"><value>安装器内文件不存在：{0}</value></data>
+  <data name="ArchiveFileTooLarge" xml:space="preserve"><value>安装器内文件超过大小上限。</value></data>
+  <data name="BaseSnapshotMissing" xml:space="preserve"><value>实例缺少基础版本快照。</value></data>
+  <data name="BaseSnapshotNotFound" xml:space="preserve"><value>基础版本快照不存在。</value></data>
+  <data name="ClientHashMismatch" xml:space="preserve"><value>实例客户端与原版客户端摘要不一致。</value></data>
+  <data name="CompleteClientFirst" xml:space="preserve"><value>请先完成 Minecraft 客户端下载。</value></data>
+  <data name="EmptyJar" xml:space="preserve"><value>JAR 文件为空。</value></data>
+  <data name="FabricLoaderMismatch" xml:space="preserve"><value>Fabric profile 的加载器版本不一致。</value></data>
+  <data name="FabricMinecraftMismatch" xml:space="preserve"><value>Fabric profile 的 Minecraft 版本不一致。</value></data>
+  <data name="HeadlessEntryMissing" xml:space="preserve"><value>安装器不提供无界面的客户端安装入口。</value></data>
+  <data name="IncompleteProcessorProfile" xml:space="preserve"><value>处理器安装描述不完整。</value></data>
+  <data name="InstallerEntryTooLarge" xml:space="preserve"><value>安装器入口超过检查上限。</value></data>
+  <data name="InstallerMinecraftMismatch" xml:space="preserve"><value>安装器要求的 Minecraft 版本与实例不一致。</value></data>
+  <data name="InstallerOutputMissing" xml:space="preserve"><value>安装器未生成目标版本描述文件。</value></data>
+  <data name="InstallerProfileMissing" xml:space="preserve"><value>安装器缺少 install 或 versionInfo。</value></data>
+  <data name="InvalidArchivePath" xml:space="preserve"><value>安装器内路径不合法。</value></data>
+  <data name="InvalidBaseSnapshot" xml:space="preserve"><value>基础版本快照不合法。</value></data>
+  <data name="InvalidInstallerOutput" xml:space="preserve"><value>安装产物的版本标识或继承关系不一致。</value></data>
+  <data name="InvalidInstallerSpec" xml:space="preserve"><value>install_profile.json 的 spec 不合法。</value></data>
+  <data name="InvalidLoader" xml:space="preserve"><value>加载器类型或版本不合法。</value></data>
+  <data name="InvalidMavenCoordinate" xml:space="preserve"><value>Maven 坐标不合法。</value></data>
+  <data name="InvalidReplacementPlan" xml:space="preserve"><value>更换计划无效、已过期或尚未确认模组兼容性提示。</value></data>
+  <data name="JavaExitFailed" xml:space="preserve"><value>Java 进程退出码为 {0}。
+{1}</value></data>
+  <data name="JavaRequired" xml:space="preserve"><value>没有可执行安装器的 Java；需要 Java {0} 或更高版本。</value></data>
+  <data name="JavaStartFailed" xml:space="preserve"><value>Java 进程未启动。</value></data>
+  <data name="LibraryHashMismatch" xml:space="preserve"><value>依赖库摘要不一致：{0}</value></data>
+  <data name="LibraryOutputMissing" xml:space="preserve"><value>安装器未生成依赖库：{0}</value></data>
+  <data name="LoaderVersionMissing" xml:space="preserve"><value>目标加载器版本不存在或不支持该 Minecraft 版本。</value></data>
+  <data name="LogCallbackFailed" xml:space="preserve"><value>日志回调失败：{0}</value></data>
+  <data name="MinecraftVersionMissing" xml:space="preserve"><value>Minecraft 版本不在官方清单中。</value></data>
+  <data name="ModCompatibilityWarning" xml:space="preserve"><value>旧加载器下的模组可能不兼容新加载器</value></data>
+  <data name="NoLoaderToReplace" xml:space="preserve"><value>实例没有可更换的加载器。</value></data>
+  <data name="OperationCanceled" xml:space="preserve"><value>加载器操作已取消。</value></data>
+  <data name="OperationFailed" xml:space="preserve"><value>加载器操作失败：{0}</value></data>
+  <data name="OperationIdEmpty" xml:space="preserve"><value>操作标识为空。</value></data>
+  <data name="ParentVersionMismatch" xml:space="preserve"><value>加载器版本描述的父版本不一致。</value></data>
+  <data name="PatchEmpty" xml:space="preserve"><value>patch 内容为空。</value></data>
+  <data name="PatchIdMismatch" xml:space="preserve"><value>patch 标识不一致。</value></data>
+  <data name="PatchInstanceMismatch" xml:space="preserve"><value>加载器 patch 与当前实例不一致。</value></data>
+  <data name="PatchOwnershipMismatch" xml:space="preserve"><value>加载器元数据与 patch 归属不一致。</value></data>
+  <data name="PlanAlreadyUsed" xml:space="preserve"><value>更换计划已被使用。</value></data>
+  <data name="ProgressCallbackFailed" xml:space="preserve"><value>进度回调失败：{0}</value></data>
+  <data name="RemoveLoaderFirst" xml:space="preserve"><value>请先删除实例中已安装的加载器。</value></data>
+  <data name="ReplacementStateMismatch" xml:space="preserve"><value>更换计划与当前加载器状态不一致。</value></data>
+  <data name="RunningInstaller" xml:space="preserve"><value>执行加载器安装器</value></data>
+  <data name="SameLoader" xml:space="preserve"><value>目标加载器与当前加载器相同。</value></data>
+  <data name="SavingArtifact" xml:space="preserve"><value>保存安装产物：{0}</value></data>
+  <data name="SharedLibraryConflict" xml:space="preserve"><value>共享库存在内容冲突：{0}</value></data>
+  <data name="TooManyPlans" xml:space="preserve"><value>等待确认的加载器计划数量超过上限。</value></data>
+  <data name="UnmanagedLoader" xml:space="preserve"><value>实例包含没有受管 patch 记录的加载器。</value></data>
+  <data name="UnregisteredVersionContent" xml:space="preserve"><value>版本 JSON 包含未登记的内容，请先处理受管文件冲突。</value></data>
+  <data name="WorkDirectoryExists" xml:space="preserve"><value>安装工作目录已经存在。</value></data>
+</root>

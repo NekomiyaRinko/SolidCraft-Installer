@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="DownloadAddressMissing" xml:space="preserve"><value>整合包文件没有可用下载地址。</value></data>
+  <data name="DownloadFailed" xml:space="preserve"><value>整合包下载失败：{0}</value></data>
+  <data name="DownloadTimeout" xml:space="preserve"><value>整合包文件下载超时。</value></data>
+  <data name="HttpFailed" xml:space="preserve"><value>整合包下载 HTTP {0}：{1}</value></data>
+  <data name="InvalidRedirect" xml:space="preserve"><value>整合包下载重定向无效或过多。</value></data>
+  <data name="ResponseSizeMismatch" xml:space="preserve"><value>整合包下载响应大小不一致。</value></data>
+  <data name="ResponseStatus" xml:space="preserve"><value>整合包 status={0}; uri={1}</value></data>
+</root>

@@ -1,31 +1,31 @@
-<UserControl x:Class="McDownload.View.ModpackResumeView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<UserControl x:Class="McDownload.View.ModpackResumeView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:i18n="clr-namespace:McDownload.i18n">
     <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
-        <DockPanel Margin="0,0,0,18"><Button Content="返回实例" DockPanel.Dock="Right" Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="Instances" Margin="8,0,0,0"/><TextBlock Text="继续导入" Style="{StaticResource Heading}" Margin="0"/></DockPanel>
+        <DockPanel Margin="0,0,0,18"><Button Content="{i18n:Loc ModpackResumeView, BackToInstances}" DockPanel.Dock="Right" Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="Instances" Margin="8,0,0,0"/><TextBlock Text="{i18n:Loc ModpackResumeView, ResumeImport}" Style="{StaticResource Heading}" Margin="0"/></DockPanel>
         <TextBlock Text="{Binding Title}" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,12"/>
         <Border Background="#FFF0EF" Padding="14" CornerRadius="4" Margin="0,0,0,14" Visibility="{Binding HasError, Converter={StaticResource BoolVisibility}}"><TextBlock Text="{Binding Error}" Foreground="#BC3030" TextWrapping="Wrap"/></Border>
         <ProgressBar Height="5" IsIndeterminate="True" Margin="0,0,0,14" Visibility="{Binding IsLoading, Converter={StaticResource BoolVisibility}}"/>
         <Border Style="{StaticResource Card}"><StackPanel>
-            <TextBlock Text="导入状态" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,12,0,0"/>
-            <Border Style="{StaticResource Warning}"><TextBlock Text="已安装的游戏、加载器和已校验文件会保留。待补齐文件将在继续导入时校验大小和摘要。" TextWrapping="Wrap"/></Border>
-            <TextBlock Text="源分发包" Style="{StaticResource Label}"/>
-            <DockPanel><Button Content="重新选择" Command="{Binding BrowseArchiveCommand}" DockPanel.Dock="Right" Style="{StaticResource RowButton}"/><TextBox IsReadOnly="True" Text="{Binding ArchivePath, Mode=OneWay}"/></DockPanel>
-            <TextBlock Text="源包移动后可重新选择，继续导入需要内容相同的分发包。" Foreground="#65758A" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"/>
+            <TextBlock Text="{i18n:Loc ModpackResumeView, ImportStatus}" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+            <Border Style="{StaticResource Warning}"><TextBlock Text="{i18n:Loc ModpackResumeView, PreserveInstalledFilesNotice}" TextWrapping="Wrap"/></Border>
+            <TextBlock Text="{i18n:Loc ModpackResumeView, SourceArchive}" Style="{StaticResource Label}"/>
+            <DockPanel><Button Content="{i18n:Loc ModpackResumeView, ChooseAgain}" Command="{Binding BrowseArchiveCommand}" DockPanel.Dock="Right" Style="{StaticResource RowButton}"/><TextBox IsReadOnly="True" Text="{Binding ArchivePath, Mode=OneWay}"/></DockPanel>
+            <TextBlock Text="{i18n:Loc ModpackResumeView, SourceArchiveHint}" Foreground="#65758A" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"/>
         </StackPanel></Border>
         <Border Style="{StaticResource Card}"><StackPanel>
-            <TextBlock Text="{Binding MissingFiles.Count, StringFormat=待补齐文件 · {0} 项}" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,12"/>
+            <TextBlock Text="{Binding MissingFiles.Count, StringFormat={i18n:Loc ModpackResumeView, MissingFilesFormat}}" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,12"/>
             <ItemsControl ItemsSource="{Binding MissingFiles}"><ItemsControl.ItemTemplate><DataTemplate><Border BorderBrush="#EDF0F4" BorderThickness="0,0,0,1" Padding="0,10"><StackPanel>
                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="{Binding Reason}" Foreground="#65758A" Margin="0,8" TextWrapping="Wrap"/>
-                <WrapPanel><Button Content="打开下载页面" Command="{Binding OpenWebsiteCommand}" IsEnabled="{Binding CanOpenWebsite}"/>
-                    <Button Content="选择本地文件" Command="{Binding BrowseCommand}" IsEnabled="{Binding CanChoose}"/>
+                <WrapPanel><Button Content="{i18n:Loc ModpackResumeView, OpenDownloadPage}" Command="{Binding OpenWebsiteCommand}" IsEnabled="{Binding CanOpenWebsite}"/>
+                    <Button Content="{i18n:Loc ModpackResumeView, ChooseLocalFile}" Command="{Binding BrowseCommand}" IsEnabled="{Binding CanChoose}"/>
                 </WrapPanel><TextBlock Text="{Binding SelectionStatus}" Foreground="#327244"/><TextBlock Text="{Binding LocalPath}" Foreground="#65758A" FontSize="11" TextWrapping="Wrap"/><TextBlock Text="{Binding Error}" Foreground="#BC3030" TextWrapping="Wrap"/>
             </StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
-            <TextBlock Text="无法取得路径和摘要的文件，需要恢复 CurseForge API 访问后重新检查，不能仅凭文件名补齐。" Foreground="#65758A" Margin="0,12,0,0" TextWrapping="Wrap"/>
+            <TextBlock Text="{i18n:Loc ModpackResumeView, RestoreApiAccessNotice}" Foreground="#65758A" Margin="0,12,0,0" TextWrapping="Wrap"/>
         </StackPanel></Border>
         <Grid IsEnabled="{Binding CanResume}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <Button Content="重新检查并继续" Command="{Binding ResumeCommand}" HorizontalAlignment="Left"/>
-            <Button x:Name="ResumeModpackButton" Grid.Column="1" Content="继续导入" Style="{StaticResource Primary}" Command="{Binding ResumeCommand}" Margin="8,0,0,6"/>
+            <Button Content="{i18n:Loc ModpackResumeView, RecheckAndResume}" Command="{Binding ResumeCommand}" HorizontalAlignment="Left"/>
+            <Button x:Name="ResumeModpackButton" Grid.Column="1" Content="{i18n:Loc ModpackResumeView, ResumeImport}" Style="{StaticResource Primary}" Command="{Binding ResumeCommand}" Margin="8,0,0,6"/>
         </Grid>
-        <TextBlock Text="任务已加入队列，可前往任务队列查看进度。" Foreground="{StaticResource Accent}" TextWrapping="Wrap" Margin="0,10" Visibility="{Binding IsQueued, Converter={StaticResource BoolVisibility}}"/>
-        <Button Content="查看任务队列" Command="{Binding DataContext.OpenTasksCommand, RelativeSource={RelativeSource AncestorType=Window}}" HorizontalAlignment="Left"/>
+        <TextBlock Text="{i18n:Loc ModpackResumeView, TaskQueuedNotice}" Foreground="{StaticResource Accent}" TextWrapping="Wrap" Margin="0,10" Visibility="{Binding IsQueued, Converter={StaticResource BoolVisibility}}"/>
+        <Button Content="{i18n:Loc ModpackResumeView, ViewTaskQueue}" Command="{Binding DataContext.OpenTasksCommand, RelativeSource={RelativeSource AncestorType=Window}}" HorizontalAlignment="Left"/>
     </StackPanel></ScrollViewer>
 </UserControl>

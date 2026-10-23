@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="ChildArgumentPrefixMismatch" xml:space="preserve"><value>子层参数不保留父层参数前缀。</value></data>
+  <data name="ConflictingArguments" xml:space="preserve"><value>版本同时包含结构化参数与 minecraftArguments。</value></data>
+  <data name="DepthLimit" xml:space="preserve"><value>版本继承深度超限。</value></data>
+  <data name="DocumentIdMismatch" xml:space="preserve"><value>文档标识与 JSON 标识不一致。</value></data>
+  <data name="DuplicateVersionId" xml:space="preserve"><value>版本清单包含重复标识。</value></data>
+  <data name="InheritanceCycle" xml:space="preserve"><value>版本继承存在循环。</value></data>
+  <data name="InstanceDirectoryMismatch" xml:space="preserve"><value>实例版本标识与目录不一致。</value></data>
+  <data name="InstanceScopeMismatch" xml:space="preserve"><value>继承解析实例不一致。</value></data>
+  <data name="InvalidActivePatches" xml:space="preserve"><value>生效 patch 集合不合法。</value></data>
+  <data name="InvalidJson" xml:space="preserve"><value>JSON 格式不合法。</value></data>
+  <data name="InvalidManifest" xml:space="preserve"><value>版本清单内容不合法。</value></data>
+  <data name="InvalidMavenCoordinate" xml:space="preserve"><value>Maven 坐标不合法。</value></data>
+  <data name="InvalidPatchOwnership" xml:space="preserve"><value>patch 归属不合法。</value></data>
+  <data name="InvalidSha1" xml:space="preserve"><value>SHA-1 摘要格式不合法。</value></data>
+  <data name="JsonFieldMissing" xml:space="preserve"><value>JSON 字段缺失：{0}</value></data>
+  <data name="JsonObjectRequired" xml:space="preserve"><value>JSON 根节点必须是对象。</value></data>
+  <data name="LatestVersionMissing" xml:space="preserve"><value>清单的最新版本引用不存在。</value></data>
+  <data name="LibraryObjectRequired" xml:space="preserve"><value>依赖库条目必须是对象。</value></data>
+  <data name="ManifestVersionsMissing" xml:space="preserve"><value>版本清单缺少 versions。</value></data>
+  <data name="ParentMissing" xml:space="preserve"><value>父版本不存在：{0}</value></data>
+  <data name="ParentSnapshotIdMismatch" xml:space="preserve"><value>父版本快照标识不一致。</value></data>
+  <data name="UnrepresentableChild" xml:space="preserve"><value>版本内容不能表示为继承子层。</value></data>
+  <data name="UnresolvedBase" xml:space="preserve"><value>基础版本尚未完成继承解析。</value></data>
+  <data name="UnsafeDownloadAddress" xml:space="preserve"><value>下载地址必须是无凭证的 HTTPS 地址。</value></data>
+  <data name="UnsupportedVersionType" xml:space="preserve"><value>版本类型不受支持。</value></data>
+  <data name="VersionAddressMismatch" xml:space="preserve"><value>版本地址或摘要与官方清单不一致。</value></data>
+  <data name="VersionHashMismatch" xml:space="preserve"><value>版本 JSON 的 SHA-1 校验失败。</value></data>
+  <data name="VersionIdMismatch" xml:space="preserve"><value>版本 JSON 标识不一致。</value></data>
+  <data name="VersionMissing" xml:space="preserve"><value>官方版本清单中不存在该版本。</value></data>
+</root>

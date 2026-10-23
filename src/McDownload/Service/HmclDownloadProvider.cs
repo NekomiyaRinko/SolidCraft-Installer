@@ -1,3 +1,4 @@
+using McDownload.i18n;
 /*
  * Minecraft download source selection adapted from HMCL.
  * Copyright (C) 2020-2026 huangyuhui and HMCL contributors.
@@ -86,13 +87,13 @@ public sealed class HmclDownloadProvider(DownloadSource source, Action<string>? 
     {
         string address = DiagnosticText.Address(candidate.Uri);
         if (candidate.IsMirror && error is HttpRequestException { StatusCode: HttpStatusCode.Forbidden })
-            log?.Invoke(DiagnosticText.Redact($"BMCLAPI 节点拒绝访问（403），该官方来源 5 分钟内使用官方源：{ResponseAddress(error, address)}"));
+            log?.Invoke(DiagnosticText.Redact(Text.Format("HmclDownloadProvider", "NodeForbidden", ResponseAddress(error, address))));
         else if (candidate.IsMirror)
-            log?.Invoke(DiagnosticText.Redact($"BMCLAPI 请求失败，回退官方源：{ResponseAddress(error, address)} {DiagnosticText.Summary(error)}"));
+            log?.Invoke(DiagnosticText.Redact(Text.Format("HmclDownloadProvider", "FallbackStarted", ResponseAddress(error, address), DiagnosticText.Summary(error))));
     }
 
     internal void LogFallbackSuccess(Uri original) =>
-        log?.Invoke("官方源回退成功：" + DiagnosticText.Address(original));
+        log?.Invoke(Text.Format("HmclDownloadProvider", "FallbackSucceeded", DiagnosticText.Address(original)));
 
     private static bool IsBlocked(ConcurrentDictionary<string, DateTimeOffset> blocked, string key)
     {

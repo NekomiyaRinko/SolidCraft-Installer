@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="ClearingLogs" xml:space="preserve"><value>开始清理历史日志，后续日志写入新文件。</value></data>
+  <data name="ExportTruncated" xml:space="preserve"><value>日志在导出期间被截断，请重试。</value></data>
+  <data name="LogsRecycled" xml:space="preserve"><value>已将 {0} 份日志移至回收站。</value></data>
+  <data name="RestartFailed" xml:space="preserve"><value>无法重新开始日志记录：{0}</value></data>
+  <data name="ZipPathRequired" xml:space="preserve"><value>请选择 ZIP 文件的完整保存路径。</value></data>
+</root>

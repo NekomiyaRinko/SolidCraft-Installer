@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -10,17 +11,17 @@ public partial class LoaderSelectionViewModel : ObservableObject
     private readonly WorkspaceViewModel _state;
     private IReadOnlyList<LoaderVersionEntry> _allVersions = Array.Empty<LoaderVersionEntry>();
     private CancellationTokenSource? _request;
-    public IReadOnlyList<string> LoaderTypes { get; } = new[] { "不安装", "Forge", "Fabric", "NeoForge" };
-    public IReadOnlyList<string> Channels { get; } = new[] { "全部", "正式版", "测试版" };
+    public IReadOnlyList<string> LoaderTypes { get; } = new[] { Text.Get("Common", "NoInstall"), Text.Get("Common", "Forge"), Text.Get("Common", "Fabric"), Text.Get("Common", "NeoForge") };
+    public IReadOnlyList<string> Channels { get; } = new[] { Text.Get("Common", "All"), Text.Get("Common", "Release"), Text.Get("Common", "Snapshot") };
     public ObservableCollection<LoaderVersionEntry> Versions { get; } = new();
     [ObservableProperty] private string minecraftVersion = "";
-    [ObservableProperty] private string selectedType = "不安装";
-    [ObservableProperty] private string selectedChannel = "正式版";
+    [ObservableProperty] private string selectedType = Text.Get("Common", "NoInstall");
+    [ObservableProperty] private string selectedChannel = Text.Get("Common", "Release");
     [ObservableProperty] private LoaderVersionEntry? selectedVersion;
     [ObservableProperty] private bool isLoading;
-    [ObservableProperty] private string message = "请选择加载器。";
+    [ObservableProperty] private string message = Text.Get("LoaderSelection", "SelectLoader");
     public Task PendingRefresh { get; private set; } = Task.CompletedTask;
-    public bool CanInstall => !IsLoading && (SelectedType == "不安装" || SelectedVersion is not null);
+    public bool CanInstall => !IsLoading && (SelectedType == Text.Get("Common", "NoInstall") || SelectedVersion is not null);
 
     public LoaderSelectionViewModel(WorkspaceViewModel state)
     {
@@ -46,11 +47,11 @@ public partial class LoaderSelectionViewModel : ObservableObject
         Versions.Clear(); SelectedVersion = null;
         try
         {
-            if (type == "不安装") { Message = "不安装加载器。"; return; }
-            if (string.IsNullOrEmpty(minecraft)) { Message = "请先选择 Minecraft 版本。"; return; }
-            if (configuration == 0) { Message = "游戏目录尚未就绪。"; return; }
-            IsLoading = true; Message = "正在获取版本…";
-            var versions = await _state.Catalog.GetVersionsAsync(minecraft, Enum.Parse<LoaderKind>(type), request.Token, forceRefresh);
+            if (type == Text.Get("Common", "NoInstall")) { Message = Text.Get("LoaderSelection", "NoLoaderInstallation"); return; }
+            if (string.IsNullOrEmpty(minecraft)) { Message = Text.Get("LoaderSelection", "SelectMinecraft"); return; }
+            if (configuration == 0) { Message = Text.Get("LoaderSelection", "DirectoryNotReady"); return; }
+            IsLoading = true; Message = Text.Get("LoaderSelection", "LoadingVersions");
+            var versions = await _state.Catalog.GetVersionsAsync(minecraft, ParseLoaderKind(type), request.Token, forceRefresh);
             if (request.IsCancellationRequested || _request != request || configuration != _state.ConfigurationVersion) return;
             _allVersions = versions;
             ApplyFilter();
@@ -60,8 +61,8 @@ public partial class LoaderSelectionViewModel : ObservableObject
         {
             if (_request == request && configuration == _state.ConfigurationVersion)
             {
-                Message = "版本获取失败，请重试：" + Service.DiagnosticText.Summary(ex);
-                _state.LogException($"加载器版本获取失败：{minecraft} / {type}", ex);
+                Message = Text.Format("LoaderSelection", "VersionFetchFailed", Service.DiagnosticText.Summary(ex));
+                _state.LogException(Text.Format("LoaderSelection", "VersionFetchLog", minecraft, type), ex);
             }
         }
         finally
@@ -74,18 +75,26 @@ public partial class LoaderSelectionViewModel : ObservableObject
     {
         var selected = SelectedVersion;
         Versions.Clear();
-        foreach (var version in _allVersions.Where(v => SelectedChannel == "全部" || v.IsStable == (SelectedChannel == "正式版")))
+        foreach (var version in _allVersions.Where(v => SelectedChannel == Text.Get("Common", "All") || v.IsStable == (SelectedChannel == Text.Get("Common", "Release"))))
             Versions.Add(version);
         SelectedVersion = Versions.FirstOrDefault(x => x == selected) ?? Versions.FirstOrDefault();
-        Message = Versions.Count > 0 ? $"{MinecraftVersion} · {SelectedType} · {Versions.Count} 个版本" :
-            _allVersions.Count > 0 ? "当前筛选下没有版本，可切换为“全部”或“测试版”。" : "此 Minecraft 版本暂无该加载器。";
+        Message = Versions.Count > 0 ? Text.Format("LoaderSelection", "VersionCount", MinecraftVersion, SelectedType, Versions.Count) :
+            _allVersions.Count > 0 ? Text.Get("LoaderSelection", "NoFilteredVersions") : Text.Get("LoaderSelection", "LoaderUnavailable");
     }
 
     public LoaderSelection? GetSelection()
     {
-        if (SelectedType == "不安装") return null;
+        if (SelectedType == Text.Get("Common", "NoInstall")) return null;
         if (IsLoading || SelectedVersion is null || !Versions.Contains(SelectedVersion))
-            throw new ArgumentException("请选择已获取的加载器版本。");
-        return new(Enum.Parse<LoaderKind>(SelectedType), SelectedVersion.Version);
+            throw new ArgumentException(Text.Get("LoaderSelection", "SelectFetchedVersion"));
+        return new(ParseLoaderKind(SelectedType), SelectedVersion.Version);
+    }
+
+    private static LoaderKind ParseLoaderKind(string label)
+    {
+        if (label == Text.Get("Common", "Forge")) return LoaderKind.Forge;
+        if (label == Text.Get("Common", "Fabric")) return LoaderKind.Fabric;
+        if (label == Text.Get("Common", "NeoForge")) return LoaderKind.NeoForge;
+        return Enum.Parse<LoaderKind>(label);
     }
 }

@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Security.Cryptography;
 using McDownload.Model;
 
@@ -12,7 +13,7 @@ internal static class ModpackSafety
     internal static string RelativePath(string value)
     {
         if (string.IsNullOrWhiteSpace(value) || value.Length > 4096 || value.Contains('\\') || Path.IsPathRooted(value))
-            throw new InvalidDataException("整合包路径不是有效的相对路径。");
+            throw new InvalidDataException(Text.Get("ModpackSafety", "InvalidRelativePath"));
         foreach (string part in value.Split('/')) InstanceManager.ValidateName(part);
         return value;
     }
@@ -28,23 +29,23 @@ internal static class ModpackSafety
             root.Equals("assets", StringComparison.OrdinalIgnoreCase) ||
             (directoryName is not null && (root.Equals(directoryName + ".json", StringComparison.OrdinalIgnoreCase) ||
                 root.Equals(directoryName + ".jar", StringComparison.OrdinalIgnoreCase))))
-            throw new InvalidDataException("整合包不能覆盖受管文件：" + path);
+            throw new InvalidDataException(Text.Format("ModpackSafety", "ManagedFileConflict", path));
     }
 
     internal static void ValidateHashes(ModpackHashes hashes, bool required = true)
     {
         foreach (var (hash, length) in new[] { (hashes.Sha1, 40), (hashes.Sha512, 128), (hashes.Md5, 32), (hashes.Sha256, 64) })
             if (hash is not null && (hash.Length != length || !hash.All(Uri.IsHexDigit)))
-                throw new InvalidDataException("整合包文件摘要不合法。");
+                throw new InvalidDataException(Text.Get("ModpackSafety", "InvalidFileHash"));
         if (required && hashes is { Sha1: null, Sha512: null, Md5: null, Sha256: null })
-            throw new InvalidDataException("整合包文件缺少可验证摘要。");
+            throw new InvalidDataException(Text.Get("ModpackSafety", "FileHashMissing"));
     }
 
     internal static void ValidateFile(ModpackFile file)
     {
-        if (file.Path is null) throw new InvalidDataException("文件目标路径缺失。");
+        if (file.Path is null) throw new InvalidDataException(Text.Get("ModpackSafety", "TargetPathMissing"));
         ValidateTarget(file.Path);
-        if (file.Size is null or < 0 or > MaximumFileBytes) throw new InvalidDataException("整合包文件大小不合法。");
+        if (file.Size is null or < 0 or > MaximumFileBytes) throw new InvalidDataException(Text.Get("ModpackSafety", "InvalidFileSize"));
         ValidateHashes(file.Hashes);
         foreach (var uri in file.Downloads) RequireDownloadUri(uri);
     }
@@ -53,7 +54,7 @@ internal static class ModpackSafety
     {
         if (!uri.IsAbsoluteUri || uri.Scheme != "https" || !uri.IsDefaultPort || uri.UserInfo.Length > 0 ||
             uri.Fragment.Length > 0 || !AllowedHost(uri.IdnHost))
-            throw new InvalidDataException("整合包下载地址不受支持。请使用可信 HTTPS 下载源。");
+            throw new InvalidDataException(Text.Get("ModpackSafety", "UnsupportedDownloadAddress"));
     }
 
     private static bool AllowedHost(string host) => host.ToLowerInvariant() is
@@ -75,13 +76,13 @@ internal static class ModpackSafety
         while ((count = await input.ReadAsync(buffer, token)) > 0)
         {
             completed += count;
-            if (completed > size || completed > MaximumFileBytes) throw new DownloadIntegrityException("整合包文件超过预期大小。");
+            if (completed > size || completed > MaximumFileBytes) throw new DownloadIntegrityException(Text.Get("ModpackSafety", "FileTooLarge"));
             sha1.AppendData(buffer, 0, count); sha512.AppendData(buffer, 0, count);
             md5.AppendData(buffer, 0, count); sha256.AppendData(buffer, 0, count);
             await output.WriteAsync(buffer.AsMemory(0, count), token);
             progress?.Invoke(completed);
         }
-        if (completed != size) throw new DownloadIntegrityException("整合包文件大小不一致。");
+        if (completed != size) throw new DownloadIntegrityException(Text.Get("ModpackSafety", "FileSizeMismatch"));
         string result = Convert.ToHexString(sha256.GetHashAndReset());
         foreach (var (expected, actual) in new[]
         {
@@ -90,7 +91,7 @@ internal static class ModpackSafety
             (hashes.Md5, Convert.ToHexString(md5.GetHashAndReset())), (hashes.Sha256, result)
         })
             if (expected is not null && !expected.Equals(actual, StringComparison.OrdinalIgnoreCase))
-                throw new DownloadIntegrityException("整合包文件摘要校验失败。");
+                throw new DownloadIntegrityException(Text.Get("ModpackSafety", "FileHashMismatch"));
         return result;
     }
 }

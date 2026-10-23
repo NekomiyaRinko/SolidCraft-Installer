@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using CommunityToolkit.Mvvm.ComponentModel;
 using McDownload.Model;
 
@@ -15,8 +16,8 @@ public partial class LicenseViewModel : ObservableObject
         selectedDocument = ProjectLicense;
         Groups = new[]
         {
-            new LicenseGroup("SolidCraft Installer · HMCL 改编部分", Documents.Take(3).ToArray()),
-            new LicenseGroup("CommunityToolkit.Mvvm 8.4.0", Documents.Skip(3).ToArray())
+            new LicenseGroup(Text.Get("License", "HmclGroup"), Documents.Take(3).ToArray()),
+            new LicenseGroup(Text.Get("License", "CommunityToolkitGroup"), Documents.Skip(3).ToArray())
         };
     }
 }

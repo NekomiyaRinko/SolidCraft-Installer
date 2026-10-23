@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Heading" xml:space="preserve"><value>下载游戏</value></data>
+  <data name="Minecraft" xml:space="preserve"><value>Minecraft</value></data>
+  <data name="ImportModpack" xml:space="preserve"><value>导入整合包</value></data>
+  <data name="InstanceName" xml:space="preserve"><value>实例名称</value></data>
+  <data name="MinecraftVersion" xml:space="preserve"><value>Minecraft 版本</value></data>
+  <data name="RefreshVersions" xml:space="preserve"><value>刷新版本</value></data>
+  <data name="InstanceIsolationNotice" xml:space="preserve"><value>模组与存档按实例独立，资源与依赖库共享。</value></data>
+  <data name="DownloadAndInstall" xml:space="preserve"><value>下载并安装</value></data>
+  <data name="ViewTaskQueue" xml:space="preserve"><value>查看任务队列</value></data>
+  <data name="DragModpackHint" xml:space="preserve"><value>将整合包拖到 SCI 窗口</value></data>
+  <data name="ModpackFormats" xml:space="preserve"><value>Modrinth .mrpack / CurseForge .zip</value></data>
+  <data name="ChooseFile" xml:space="preserve"><value>选择文件</value></data>
+  <data name="ModpackInstanceNotice" xml:space="preserve"><value>按照整合包指定版本创建独立新实例，保留现有实例与配置。</value></data>
+  <data name="ReadingModpack" xml:space="preserve"><value>正在读取整合包…</value></data>
+  <data name="CancelReading" xml:space="preserve"><value>取消读取</value></data>
+  <data name="ChooseAgain" xml:space="preserve"><value>重新选择</value></data>
+  <data name="ModpackInformation" xml:space="preserve"><value>整合包信息</value></data>
+  <data name="ModpackFile" xml:space="preserve"><value>整合包文件</value></data>
+  <data name="SpecifiedByModpack" xml:space="preserve"><value>由整合包指定</value></data>
+  <data name="Loader" xml:space="preserve"><value>加载器</value></data>
+  <data name="InstanceSettings" xml:space="preserve"><value>实例设置</value></data>
+  <data name="InstallerJavaOptional" xml:space="preserve"><value>安装器 Java（可选）</value></data>
+  <data name="Browse" xml:space="preserve"><value>浏览</value></data>
+  <data name="OptionalFilesFormat" xml:space="preserve"><value>可选文件 · {0} 项</value></data>
+  <data name="NoOptionalFiles" xml:space="preserve"><value>此整合包没有客户端可选文件。</value></data>
+  <data name="AddToQueue" xml:space="preserve"><value>加入下载队列</value></data>
+  <data name="PreserveExistingInstances" xml:space="preserve"><value>创建新实例，保留现有实例和配置。</value></data>
+</root>

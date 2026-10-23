@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Windows;
 using McDownload.View;
 using McDownload.ViewModel;
@@ -9,12 +10,12 @@ public partial class App : Application
     {
         base.OnStartup(e);
         var model = _model = new MainWindowViewModel();
-        DispatcherUnhandledException += (_, args) => model.State.LogException("未处理的界面异常", args.Exception);
+        DispatcherUnhandledException += (_, args) => model.State.LogException(Text.Get("App", "UnhandledUiException"), args.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
         {
-            if (args.ExceptionObject is Exception error) model.State.LogException("未处理的进程异常", error);
+            if (args.ExceptionObject is Exception error) model.State.LogException(Text.Get("App", "UnhandledProcessException"), error);
         };
-        TaskScheduler.UnobservedTaskException += (_, args) => model.State.LogException("未观察到的任务异常", args.Exception);
+        TaskScheduler.UnobservedTaskException += (_, args) => model.State.LogException(Text.Get("App", "UnobservedTaskException"), args.Exception);
         var window = new MainWindow { DataContext = model };
         bool closeAfterCancellation = false;
         window.Closing += (_, args) =>
@@ -39,11 +40,11 @@ public partial class App : Application
         };
         MainWindow = window; window.Show();
         try { await model.InitializeAsync(); }
-        catch (Exception ex) { model.State.ReportError("应用初始化失败", ex); }
+        catch (Exception ex) { model.State.ReportError(Text.Get("App", "InitializationFailed"), ex); }
     }
     protected override void OnExit(ExitEventArgs e)
     {
-        _model?.State.Log("SCI 已退出。");
+        _model?.State.Log(Text.Get("App", "Exited"));
         _model?.State.Dispose();
         base.OnExit(e);
     }

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="DirectoryNotReady" xml:space="preserve"><value>游戏目录尚未就绪。</value></data>
+  <data name="LoaderUnavailable" xml:space="preserve"><value>此 Minecraft 版本暂无该加载器。</value></data>
+  <data name="LoadingVersions" xml:space="preserve"><value>正在获取版本…</value></data>
+  <data name="NoFilteredVersions" xml:space="preserve"><value>当前筛选下没有版本，可切换为“全部”或“测试版”。</value></data>
+  <data name="NoLoaderInstallation" xml:space="preserve"><value>不安装加载器。</value></data>
+  <data name="SelectFetchedVersion" xml:space="preserve"><value>请选择已获取的加载器版本。</value></data>
+  <data name="SelectLoader" xml:space="preserve"><value>请选择加载器。</value></data>
+  <data name="SelectMinecraft" xml:space="preserve"><value>请先选择 Minecraft 版本。</value></data>
+  <data name="VersionCount" xml:space="preserve"><value>{0} · {1} · {2} 个版本</value></data>
+  <data name="VersionFetchFailed" xml:space="preserve"><value>版本获取失败，请重试：{0}</value></data>
+  <data name="VersionFetchLog" xml:space="preserve"><value>加载器版本获取失败：{0} / {1}</value></data>
+</root>

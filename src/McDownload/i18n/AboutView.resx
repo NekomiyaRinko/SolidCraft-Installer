@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Heading" xml:space="preserve"><value>关于</value></data>
+  <data name="ProductAbbreviation" xml:space="preserve"><value>SCI</value></data>
+  <data name="ProductName" xml:space="preserve"><value>SolidCraft Installer</value></data>
+  <data name="VersionFormat" xml:space="preserve"><value>版本 {0}</value></data>
+  <data name="CopyrightHeading" xml:space="preserve"><value>版权</value></data>
+  <data name="HmclCopyright" xml:space="preserve"><value>Copyright © 2020–2026 huangyuhui and HMCL contributors.</value></data>
+  <data name="ProjectCopyright" xml:space="preserve"><value>Copyright © 2026 NekomiyaRinko.</value></data>
+  <data name="LicensesHeading" xml:space="preserve"><value>许可证与声明</value></data>
+  <data name="GameDistributionNotice" xml:space="preserve"><value>SCI 不托管、不分发游戏文件。Minecraft 文件及加载器由 SCI 从 Mojang、加载器官方源或第三方镜像源获取后写入用户本地实例目录，不随 SCI 发布包捆绑，各自由其权利方的使用条款管理。</value></data>
+  <data name="ThirdPartyLicenseNotice" xml:space="preserve"><value>SCI 的 GPL 声明不改变第三方组件各自的许可，由各自权利方的使用条款管理。</value></data>
+  <data name="OpenLicenses" xml:space="preserve"><value>开放源代码许可</value></data>
+  <data name="OpenProjectLicense" xml:space="preserve"><value>开源协议</value></data>
+</root>

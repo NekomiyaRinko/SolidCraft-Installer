@@ -1,3 +1,4 @@
+using McDownload.i18n;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Compression;
@@ -14,7 +15,7 @@ namespace McDownload.Service;
 
 public sealed class LoaderInstaller : ILoaderInstaller
 {
-    private const string ModWarning = "旧加载器下的模组可能不兼容新加载器";
+    private static string ModWarning => Text.Get("LoaderInstaller", "ModCompatibilityWarning");
     private readonly InstanceManager _instances;
     private readonly VersionResolver _versions;
     private readonly HmclFetchTask _fetcher;
@@ -71,7 +72,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
         await using var lease = await _instances.LockInstanceAsync(request.InstanceId, context.CancellationToken);
         var metadata = await _instances.ReadLockedAsync(directory, context.CancellationToken);
         InstanceManager.CheckRevision(metadata, request.ExpectedRevision);
-        if (metadata.InstalledLoader is not null) throw new LoaderStateException("请先删除实例中已安装的加载器。");
+        if (metadata.InstalledLoader is not null) throw new LoaderStateException(Text.Get("LoaderInstaller", "RemoveLoaderFirst"));
         RequireClient(metadata);
         var inspected = await InspectAsync(metadata.MinecraftVersionId, request.Target,
             request.InstallerJavaExecutable ?? metadata.Editable.JavaExecutable, context.CancellationToken);
@@ -89,7 +90,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
         var metadata = await _instances.ReadLockedAsync(directory, context.CancellationToken);
         InstanceManager.CheckRevision(metadata, request.ExpectedRevision);
         if (metadata.InstalledLoader is null || metadata.LoaderPatchId != request.ExpectedLoaderPatchId)
-            throw new LoaderStateException("加载器 patch 与当前实例不一致。");
+            throw new LoaderStateException(Text.Get("LoaderInstaller", "PatchInstanceMismatch"));
         _ = await ReadManagedAsync(metadata, context.CancellationToken);
         return await RunLockedAsync(metadata, context, report => RemoveCoreAsync(metadata, context, report));
     }
@@ -102,15 +103,15 @@ public sealed class LoaderInstaller : ILoaderInstaller
         await using var lease = await _instances.LockInstanceAsync(request.InstanceId, cancellationToken);
         var metadata = await _instances.ReadLockedAsync(directory, cancellationToken);
         InstanceManager.CheckRevision(metadata, request.ExpectedRevision);
-        if (metadata.InstalledLoader is null) throw new LoaderStateException("实例没有可更换的加载器。");
-        if (metadata.InstalledLoader == request.Target) throw new LoaderStateException("目标加载器与当前加载器相同。");
+        if (metadata.InstalledLoader is null) throw new LoaderStateException(Text.Get("LoaderInstaller", "NoLoaderToReplace"));
+        if (metadata.InstalledLoader == request.Target) throw new LoaderStateException(Text.Get("LoaderInstaller", "SameLoader"));
         _ = await ReadManagedAsync(metadata, cancellationToken);
         var inspected = await InspectAsync(metadata.MinecraftVersionId, request.Target,
             request.InstallerJavaExecutable ?? metadata.Editable.JavaExecutable, cancellationToken);
         var plan = new LoaderReplacementPlan(Guid.NewGuid(), request, State(metadata), inspected.Report, ModWarning);
         foreach (var entry in _plans)
             if (entry.Value.Expires <= DateTimeOffset.UtcNow) _plans.TryRemove(entry.Key, out _);
-        if (_plans.Count >= 256) throw new InstanceConflictException("等待确认的加载器计划数量超过上限。");
+        if (_plans.Count >= 256) throw new InstanceConflictException(Text.Get("LoaderInstaller", "TooManyPlans"));
         _plans[plan.PlanId] = (plan, DateTimeOffset.UtcNow.AddMinutes(10));
         return plan;
     }
@@ -124,20 +125,20 @@ public sealed class LoaderInstaller : ILoaderInstaller
         if (!approval.ModCompatibilityWarningAccepted || approval.PlanId != plan.PlanId ||
             !_plans.TryGetValue(plan.PlanId, out var saved) || saved.Expires <= DateTimeOffset.UtcNow ||
             saved.Plan.Request != plan.Request || saved.Plan.CurrentState != plan.CurrentState)
-            throw new UserConfirmationRequiredException("更换计划无效、已过期或尚未确认模组兼容性提示。");
+            throw new UserConfirmationRequiredException(Text.Get("LoaderInstaller", "InvalidReplacementPlan"));
         plan = saved.Plan;
         string directory = await _instances.FindDirectoryAsync(plan.Request.InstanceId, context.CancellationToken);
         await using var lease = await _instances.LockInstanceAsync(plan.Request.InstanceId, context.CancellationToken);
         var metadata = await _instances.ReadLockedAsync(directory, context.CancellationToken);
         InstanceManager.CheckRevision(metadata, plan.Request.ExpectedRevision);
         if (State(metadata) != plan.CurrentState || metadata.InstalledLoader is null)
-            throw new LoaderStateException("更换计划与当前加载器状态不一致。");
+            throw new LoaderStateException(Text.Get("LoaderInstaller", "ReplacementStateMismatch"));
         _ = await ReadManagedAsync(metadata, context.CancellationToken);
         RequireClient(metadata);
         var inspected = await InspectAsync(metadata.MinecraftVersionId, plan.Request.Target,
             plan.Request.InstallerJavaExecutable ?? metadata.Editable.JavaExecutable, context.CancellationToken);
         RequireCompatible(inspected.Report);
-        if (!_plans.TryRemove(plan.PlanId, out _)) throw new UserConfirmationRequiredException("更换计划已被使用。");
+        if (!_plans.TryRemove(plan.PlanId, out _)) throw new UserConfirmationRequiredException(Text.Get("LoaderInstaller", "PlanAlreadyUsed"));
         Log(ModWarning, true);
         return await RunLockedAsync(metadata, context, async report =>
         {
@@ -161,7 +162,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
                 context.Progress?.Report(new(context.OperationId, initial.Id, Interlocked.Increment(ref sequence), current,
                     current == OperationStage.Completed ? 1 : null, fraction, bytes, total, item));
             }
-            catch (Exception error) { Log("进度回调失败：" + error.Message, true); }
+            catch (Exception error) { Log(Text.Format("LoaderInstaller", "ProgressCallbackFailed", error.Message), true); }
         }
         try
         {
@@ -189,14 +190,14 @@ public sealed class LoaderInstaller : ILoaderInstaller
             if (error is OperationCanceledException && context.CancellationToken.IsCancellationRequested && !requiresRecovery)
             {
                 Report(OperationStage.Canceled);
-                throw new LoaderOperationCanceledException("加载器操作已取消。", error)
+                throw new LoaderOperationCanceledException(Text.Get("LoaderInstaller", "OperationCanceled"), error)
                 {
                     OperationId = context.OperationId,
                     FinalState = finalState!
                 };
             }
             Report(OperationStage.Failed);
-            throw new LoaderOperationFailedException("加载器操作失败：" + error.Message, cause)
+            throw new LoaderOperationFailedException(Text.Format("LoaderInstaller", "OperationFailed", error.Message), cause)
             {
                 OperationId = context.OperationId,
                 Code = requiresRecovery ? "RecoveryRequired" : "LoaderExecutionFailed",
@@ -230,7 +231,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
     {
         var paths = _instances.Paths(metadata);
         string work = InstanceManager.Child(paths.WorkDirectory, context.OperationId.ToString("N"));
-        if (Directory.Exists(InstanceManager.Extended(work))) throw new LoaderStateException("安装工作目录已经存在。");
+        if (Directory.Exists(InstanceManager.Extended(work))) throw new LoaderStateException(Text.Get("LoaderInstaller", "WorkDirectoryExists"));
         InstanceManager.EnsureDirectory(work);
         try
         {
@@ -282,7 +283,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
     {
         var paths = _instances.Paths(metadata);
         if (File.Exists(InstanceManager.Extended(paths.BaseVersionJsonFile))) return await ReadManagedAsync(metadata, token);
-        if (metadata.ActivePatchIds.Count != 0) throw new LoaderStateException("实例缺少基础版本快照。");
+        if (metadata.ActivePatchIds.Count != 0) throw new LoaderStateException(Text.Get("LoaderInstaller", "BaseSnapshotMissing"));
         var leaf = await InstanceManager.ReadObjectAsync(paths.VersionJsonFile, token);
         var resolved = await _versions.ResolveLockedAsync(new(VersionResolver.Text(leaf, "id"), leaf), metadata,
             new(metadata.Id, 64, true), token);
@@ -292,7 +293,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
         if (markers.Any(x => mainClass.StartsWith(x, StringComparison.Ordinal)) ||
             (json["libraries"] as JsonArray ?? new()).OfType<JsonObject>()
             .Any(x => markers.Any(marker => (x["name"]?.GetValue<string>() ?? "").StartsWith(marker + ":", StringComparison.Ordinal))))
-            throw new LoaderStateException("实例包含没有受管 patch 记录的加载器。");
+            throw new LoaderStateException(Text.Get("LoaderInstaller", "UnmanagedLoader"));
         json["id"] = VersionResolver.ParentId(metadata);
         json.Remove("jar");
         json.Remove("inheritsFrom");
@@ -303,31 +304,31 @@ public sealed class LoaderInstaller : ILoaderInstaller
         InstanceMetadata metadata, CancellationToken token)
     {
         var paths = _instances.Paths(metadata);
-        if (!File.Exists(InstanceManager.Extended(paths.BaseVersionJsonFile))) throw new LoaderStateException("基础版本快照不存在。");
+        if (!File.Exists(InstanceManager.Extended(paths.BaseVersionJsonFile))) throw new LoaderStateException(Text.Get("LoaderInstaller", "BaseSnapshotNotFound"));
         var json = await InstanceManager.ReadObjectAsync(paths.BaseVersionJsonFile, token);
         if (VersionResolver.Text(json, "id") != VersionResolver.ParentId(metadata) || json["inheritsFrom"] is not null)
-            throw new LoaderStateException("基础版本快照不合法。");
+            throw new LoaderStateException(Text.Get("LoaderInstaller", "InvalidBaseSnapshot"));
         var baseVersion = new VersionDocument(VersionResolver.ParentId(metadata), json);
         var patches = new List<VersionPatch>();
         foreach (Guid id in metadata.ActivePatchIds)
         {
             var patch = JsonSerializer.Deserialize<VersionPatch>(await InstanceManager.ReadBytesAsync(
                 InstanceManager.Child(paths.PatchDirectory, id.ToString("N") + ".json"), 16 * 1024 * 1024, token), InstanceManager.JsonOptions)
-                ?? throw new LoaderStateException("patch 内容为空。");
-            if (patch.PatchId != id || patch.Json is null) throw new LoaderStateException("patch 标识不一致。");
+                ?? throw new LoaderStateException(Text.Get("LoaderInstaller", "PatchEmpty"));
+            if (patch.PatchId != id || patch.Json is null) throw new LoaderStateException(Text.Get("LoaderInstaller", "PatchIdMismatch"));
             patches.Add(patch);
         }
         var loaders = patches.Where(x => x.Kind == VersionPatchKind.Loader).ToArray();
         if ((metadata.InstalledLoader is null && loaders.Length != 0) ||
             (metadata.InstalledLoader is not null && (loaders.Length != 1 || loaders[0].PatchId != metadata.LoaderPatchId ||
                 loaders[0].Loader != metadata.InstalledLoader)))
-            throw new LoaderStateException("加载器元数据与 patch 归属不一致。");
+            throw new LoaderStateException(Text.Get("LoaderInstaller", "PatchOwnershipMismatch"));
         var effective = _versions.Compose(baseVersion, patches, metadata.DirectoryName);
         var expected = _versions.ToInherited(baseVersion, effective, VersionResolver.ParentId(metadata));
         var standalone = _versions.ToStandalone(effective);
         var current = await InstanceManager.ReadObjectAsync(paths.VersionJsonFile, token);
         if (!JsonNode.DeepEquals(current, expected.Json) && !JsonNode.DeepEquals(current, standalone.Json))
-            throw new LoaderStateException("版本 JSON 包含未登记的内容，请先处理受管文件冲突。");
+            throw new LoaderStateException(Text.Get("LoaderInstaller", "UnregisteredVersionContent"));
         return (baseVersion, patches);
     }
 
@@ -338,12 +339,12 @@ public sealed class LoaderInstaller : ILoaderInstaller
         InstanceManager.ValidateName(minecraftVersion);
         ArgumentException.ThrowIfNullOrWhiteSpace(target.Version);
         if (!Enum.IsDefined(target.Kind) || !Regex.IsMatch(target.Version, @"\A[A-Za-z0-9][A-Za-z0-9._+\-]{0,180}\z"))
-            throw new ArgumentException("加载器类型或版本不合法。");
+            throw new ArgumentException(Text.Get("LoaderInstaller", "InvalidLoader"));
         try
         {
             var manifest = await _versions.GetManifestAsync(token);
             var entry = manifest.Versions.FirstOrDefault(x => x.Id == minecraftVersion)
-                ?? throw new LoaderCompatibilityException("Minecraft 版本不在官方清单中。");
+                ?? throw new LoaderCompatibilityException(Text.Get("LoaderInstaller", "MinecraftVersionMissing"));
             var vanilla = await _versions.FetchVersionJsonAsync(entry, token);
             JsonObject profile;
             ForgePackage? forge = null;
@@ -353,10 +354,10 @@ public sealed class LoaderInstaller : ILoaderInstaller
                 var uri = new Uri($"https://meta.fabricmc.net/v2/versions/loader/{Uri.EscapeDataString(minecraftVersion)}/{Uri.EscapeDataString(target.Version)}/profile/json");
                 profile = await _fetcher.ReadAsync(uri, 16 * 1024 * 1024, VersionResolver.ParseObject, token);
                 if (VersionResolver.Text(profile, "inheritsFrom") != minecraftVersion)
-                    throw new LoaderCompatibilityException("Fabric profile 的 Minecraft 版本不一致。");
+                    throw new LoaderCompatibilityException(Text.Get("LoaderInstaller", "FabricMinecraftMismatch"));
                 if (!(profile["libraries"] as JsonArray ?? new()).OfType<JsonObject>()
                     .Any(x => x["name"]?.GetValue<string>() == "net.fabricmc:fabric-loader:" + target.Version))
-                    throw new LoaderCompatibilityException("Fabric profile 的加载器版本不一致。");
+                    throw new LoaderCompatibilityException(Text.Get("LoaderInstaller", "FabricLoaderMismatch"));
             }
             else
             {
@@ -374,7 +375,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
         catch (OperationCanceledException) { throw; }
         catch (HttpRequestException error) when (error.StatusCode == HttpStatusCode.NotFound)
         {
-            return (Failure(CompatibilityStatus.Incompatible, "LoaderVersionMissing", "目标加载器版本不存在或不支持该 Minecraft 版本。"), null);
+            return (Failure(CompatibilityStatus.Incompatible, "LoaderVersionMissing", Text.Get("LoaderInstaller", "LoaderVersionMissing")), null);
         }
         catch (Exception error) when (error is LoaderCompatibilityException or VersionResolutionException or InvalidDataException or JsonException)
         {
@@ -418,14 +419,14 @@ public sealed class LoaderInstaller : ILoaderInstaller
     private static JsonObject ParseProcessorProfile(ZipArchive archive, JsonObject install, string minecraftVersion)
     {
         if (install["spec"] is not JsonValue spec || !spec.TryGetValue<int>(out int value) || value < 0)
-            throw new InvalidDataException("install_profile.json 的 spec 不合法。");
+            throw new InvalidDataException(Text.Get("LoaderInstaller", "InvalidInstallerSpec"));
         if (VersionResolver.Text(install, "minecraft") != minecraftVersion)
-            throw new LoaderCompatibilityException("安装器要求的 Minecraft 版本与实例不一致。");
+            throw new LoaderCompatibilityException(Text.Get("LoaderInstaller", "InstallerMinecraftMismatch"));
         if ((install["processors"] is not null and not JsonArray) || (install["libraries"] is not null and not JsonArray))
-            throw new InvalidDataException("处理器安装描述不完整。");
+            throw new InvalidDataException(Text.Get("LoaderInstaller", "IncompleteProcessorProfile"));
         var runtime = ReadArchiveJson(archive, VersionResolver.Text(install, "json"));
         if (runtime["inheritsFrom"]?.GetValue<string>() is string parent && parent != minecraftVersion)
-            throw new LoaderCompatibilityException("加载器版本描述的父版本不一致。");
+            throw new LoaderCompatibilityException(Text.Get("LoaderInstaller", "ParentVersionMismatch"));
         InstanceManager.ValidateName(VersionResolver.Text(runtime, "id"));
         return runtime;
     }
@@ -433,13 +434,13 @@ public sealed class LoaderInstaller : ILoaderInstaller
     private static JsonObject ParseLegacyProfile(ZipArchive archive, JsonObject install, string minecraftVersion)
     {
         if (install["install"] is not JsonObject details || install["versionInfo"] is not JsonObject runtime)
-            throw new InvalidDataException("安装器缺少 install 或 versionInfo。");
+            throw new InvalidDataException(Text.Get("LoaderInstaller", "InstallerProfileMissing"));
         if (VersionResolver.Text(details, "minecraft") != minecraftVersion)
-            throw new LoaderCompatibilityException("安装器要求的 Minecraft 版本与实例不一致。");
+            throw new LoaderCompatibilityException(Text.Get("LoaderInstaller", "InstallerMinecraftMismatch"));
         _ = MavenPath(VersionResolver.Text(details, "path"));
         _ = Entry(archive, VersionResolver.Text(details, "filePath"));
         if (runtime["inheritsFrom"]?.GetValue<string>() is string parent && parent != minecraftVersion)
-            throw new LoaderCompatibilityException("加载器版本描述的父版本不一致。");
+            throw new LoaderCompatibilityException(Text.Get("LoaderInstaller", "ParentVersionMismatch"));
         return (JsonObject)runtime.DeepClone();
     }
 
@@ -451,12 +452,12 @@ public sealed class LoaderInstaller : ILoaderInstaller
                      x.FullName.Contains("/installer/", StringComparison.Ordinal)))
         {
             inspected += entry.Length;
-            if (inspected > 32 * 1024 * 1024) throw new InvalidDataException("安装器入口超过检查上限。");
+            if (inspected > 32 * 1024 * 1024) throw new InvalidDataException(Text.Get("LoaderInstaller", "InstallerEntryTooLarge"));
             string constants = Encoding.Latin1.GetString(ReadEntry(entry, 4 * 1024 * 1024));
             if (constants.Contains("install-client", StringComparison.Ordinal)) return "--install-client";
             camelCase |= constants.Contains("installClient", StringComparison.Ordinal);
         }
-        return camelCase ? "--installClient" : throw new LoaderCompatibilityException("安装器不提供无界面的客户端安装入口。");
+        return camelCase ? "--installClient" : throw new LoaderCompatibilityException(Text.Get("LoaderInstaller", "HeadlessEntryMissing"));
     }
 
     private async Task<JsonObject> InstallProcessorFormatAsync(InstanceMetadata metadata, VersionDocument vanilla,
@@ -465,7 +466,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
         var paths = _instances.Paths(metadata);
         string clientHash = VersionResolver.Text(vanilla.Json["downloads"]?["client"], "sha1");
         if (!await HasSha1Async(paths.ClientJarFile, clientHash, token))
-            throw new DownloadIntegrityException("实例客户端与原版客户端摘要不一致。");
+            throw new DownloadIntegrityException(Text.Get("LoaderInstaller", "ClientHashMismatch"));
         string versionDirectory = InstanceManager.Child(work, "versions/" + metadata.MinecraftVersionId);
         InstanceManager.EnsureDirectory(versionDirectory);
         await InstanceManager.AtomicBytesAsync(InstanceManager.Child(versionDirectory, metadata.MinecraftVersionId + ".json"),
@@ -475,15 +476,15 @@ public sealed class LoaderInstaller : ILoaderInstaller
             Encoding.UTF8.GetBytes("{\"profiles\":{}}"), token);
         string localInstaller = InstanceManager.Child(work, "installer.jar");
         await CopyAtomicAsync(package.Installer, localInstaller, token);
-        report(OperationStage.InstallingLoader, null, "执行加载器安装器");
+        report(OperationStage.InstallingLoader, null, Text.Get("LoaderInstaller", "RunningInstaller"));
         await _runJava(java, new[] { "-Djava.awt.headless=true", "-Duser.home=" + InstanceManager.Normal(work),
             "-jar", InstanceManager.Normal(localInstaller), package.ClientOption!, InstanceManager.Normal(work) }, work, token);
         string id = VersionResolver.Text(package.Version, "id");
         string output = InstanceManager.Child(work, $"versions/{id}/{id}.json");
-        if (!File.Exists(InstanceManager.Extended(output))) throw new IOException("安装器未生成目标版本描述文件。");
+        if (!File.Exists(InstanceManager.Extended(output))) throw new IOException(Text.Get("LoaderInstaller", "InstallerOutputMissing"));
         var result = await InstanceManager.ReadObjectAsync(output, token);
         if (VersionResolver.Text(result, "id") != id || result["inheritsFrom"]?.GetValue<string>() != metadata.MinecraftVersionId)
-            throw new InvalidDataException("安装产物的版本标识或继承关系不一致。");
+            throw new InvalidDataException(Text.Get("LoaderInstaller", "InvalidInstallerOutput"));
         await EnsureLibrariesAsync(package.Install, work, token, report);
         await PublishInstallerLibrariesAsync(work, token, report);
         return result;
@@ -499,7 +500,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
             token.ThrowIfCancellationRequested();
             string relative = Path.GetRelativePath(libraries, InstanceManager.Normal(file));
             string destination = InstanceManager.Child(_instances.MinecraftRoot, "libraries/" + relative);
-            report(OperationStage.InstallingLoader, null, "保存安装产物：" + relative);
+            report(OperationStage.InstallingLoader, null, Text.Format("LoaderInstaller", "SavingArtifact", relative));
             await PublishLibraryAsync(file, destination, relative, null, token);
         }
     }
@@ -554,7 +555,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
         if (!File.Exists(InstanceManager.Extended(source)))
         {
             string? address = artifact?["url"]?.GetValue<string>();
-            if (address == "") throw new FileNotFoundException("安装器未生成依赖库：" + relative);
+            if (address == "") throw new FileNotFoundException(Text.Format("LoaderInstaller", "LibraryOutputMissing", relative));
             if (address is null)
             {
                 string repository = library["url"]?.GetValue<string>() ?? DefaultRepository(VersionResolver.Text(library, "name"));
@@ -570,7 +571,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
             await DownloadAsync(uri, source, sha1, token, (bytes, total) =>
                 report(OperationStage.Downloading, null, relative, bytes, total));
         }
-        if (sha1 is not null && !await HasSha1Async(source, sha1, token)) throw new DownloadIntegrityException("依赖库摘要不一致：" + relative);
+        if (sha1 is not null && !await HasSha1Async(source, sha1, token)) throw new DownloadIntegrityException(Text.Format("LoaderInstaller", "LibraryHashMismatch", relative));
         await PublishLibraryAsync(source, destination, relative, sha1, token);
     }
 
@@ -581,7 +582,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
         if (File.Exists(InstanceManager.Extended(destination)))
         {
             if (await InstanceManager.Sha256FileAsync(source, token) == await InstanceManager.Sha256FileAsync(destination, token)) return;
-            if (sha1 is null) throw new DownloadIntegrityException("共享库存在内容冲突：" + relative);
+            if (sha1 is null) throw new DownloadIntegrityException(Text.Format("LoaderInstaller", "SharedLibraryConflict", relative));
         }
         await CopyAtomicAsync(source, destination, token);
     }
@@ -624,20 +625,20 @@ public sealed class LoaderInstaller : ILoaderInstaller
     {
         string normalized = name.Replace('\\', '/').TrimStart('/');
         if (normalized.Length == 0 || normalized.Split('/').Any(x => x is "" or "." or ".." || x.Contains(':')))
-            throw new InvalidDataException("安装器内路径不合法。");
-        return archive.GetEntry(normalized) ?? throw new InvalidDataException("安装器内文件不存在：" + normalized);
+            throw new InvalidDataException(Text.Get("LoaderInstaller", "InvalidArchivePath"));
+        return archive.GetEntry(normalized) ?? throw new InvalidDataException(Text.Format("LoaderInstaller", "ArchiveFileMissing", normalized));
     }
 
     private static byte[] ReadEntry(ZipArchiveEntry entry, int maximum)
     {
-        if (entry.Length > maximum) throw new InvalidDataException("安装器内文件超过大小上限。");
+        if (entry.Length > maximum) throw new InvalidDataException(Text.Get("LoaderInstaller", "ArchiveFileTooLarge"));
         using var input = entry.Open();
         using var output = new MemoryStream();
         byte[] buffer = new byte[65536];
         int count;
         while ((count = input.Read(buffer)) > 0)
         {
-            if (output.Length + count > maximum) throw new InvalidDataException("安装器内文件超过大小上限。");
+            if (output.Length + count > maximum) throw new InvalidDataException(Text.Get("LoaderInstaller", "ArchiveFileTooLarge"));
             output.Write(buffer, 0, count);
         }
         return output.ToArray();
@@ -648,14 +649,14 @@ public sealed class LoaderInstaller : ILoaderInstaller
         InstanceManager.CheckNoReparse(path);
         using var input = new FileStream(InstanceManager.Extended(path), FileMode.Open, FileAccess.Read, FileShare.Read);
         using var archive = new ZipArchive(input, ZipArchiveMode.Read);
-        if (archive.Entries.Count == 0) throw new InvalidDataException("JAR 文件为空。");
+        if (archive.Entries.Count == 0) throw new InvalidDataException(Text.Get("LoaderInstaller", "EmptyJar"));
     }
 
     private static string MavenPath(string coordinate)
     {
         string[] extension = coordinate.Split('@');
         string[] parts = extension[0].Split(':');
-        if (extension.Length > 2 || parts.Length is < 3 or > 4) throw new InvalidDataException("Maven 坐标不合法。");
+        if (extension.Length > 2 || parts.Length is < 3 or > 4) throw new InvalidDataException(Text.Get("LoaderInstaller", "InvalidMavenCoordinate"));
         foreach (string part in parts) InstanceManager.ValidateName(part);
         string suffix = extension.Length == 2 ? extension[1] : "jar";
         InstanceManager.ValidateName(suffix);
@@ -756,7 +757,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
             catch (OperationCanceledException) when (!token.IsCancellationRequested) { }
             catch (Exception error) when (error is IOException or System.ComponentModel.Win32Exception or ArgumentException or InstanceValidationException) { }
         }
-        throw new LoaderCompatibilityException($"没有可执行安装器的 Java；需要 Java {minimum} 或更高版本。");
+        throw new LoaderCompatibilityException(Text.Format("LoaderInstaller", "JavaRequired", minimum));
     }
 
     private static async Task<string> RunJavaAsync(string java, IEnumerable<string> arguments, string work, CancellationToken token)
@@ -773,7 +774,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
         foreach (string key in new[] { "JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "JDK_JAVA_OPTIONS", "CLASSPATH" }) start.Environment.Remove(key);
         using var process = new Process { StartInfo = start };
         token.ThrowIfCancellationRequested();
-        if (!process.Start()) throw new IOException("Java 进程未启动。");
+        if (!process.Start()) throw new IOException(Text.Get("LoaderInstaller", "JavaStartFailed"));
         var output = new StringBuilder();
         async Task Drain(StreamReader reader)
         {
@@ -792,7 +793,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
             throw;
         }
         await Task.WhenAll(stdout, stderr);
-        if (process.ExitCode != 0) throw new IOException($"Java 进程退出码为 {process.ExitCode}。\n{output}");
+        if (process.ExitCode != 0) throw new IOException(Text.Format("LoaderInstaller", "JavaExitFailed", process.ExitCode, output));
         return output.ToString();
     }
 
@@ -800,7 +801,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
     {
         var paths = _instances.Paths(metadata);
         if (!File.Exists(InstanceManager.Extended(paths.ClientJarFile)) || !File.Exists(InstanceManager.Extended(paths.VersionJsonFile)))
-            throw new LoaderStateException("请先完成 Minecraft 客户端下载。");
+            throw new LoaderStateException(Text.Get("LoaderInstaller", "CompleteClientFirst"));
     }
 
     private static CompatibilityReport Failure(CompatibilityStatus status, string code, string message) =>
@@ -809,7 +810,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
     private static void RequireCompatible(CompatibilityReport report)
     {
         if (report.Status == CompatibilityStatus.Compatible && !report.Issues.Any(x => x.IsBlocking)) return;
-        var error = new LoaderCompatibilityException(string.Join("；", report.Issues.Select(x => x.Message)));
+        var error = new LoaderCompatibilityException(string.Join(Text.Get("Common", "IssueSeparator"), report.Issues.Select(x => x.Message)));
         error.Data["CompatibilityReport"] = report;
         throw error;
     }
@@ -820,7 +821,7 @@ public sealed class LoaderInstaller : ILoaderInstaller
     private static void ValidateContext(OperationContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        if (context.OperationId == Guid.Empty) throw new ArgumentException("操作标识为空。");
+        if (context.OperationId == Guid.Empty) throw new ArgumentException(Text.Get("LoaderInstaller", "OperationIdEmpty"));
         context.CancellationToken.ThrowIfCancellationRequested();
     }
 
@@ -828,6 +829,6 @@ public sealed class LoaderInstaller : ILoaderInstaller
     {
         if (warning) Trace.TraceWarning(message); else Trace.TraceInformation(message);
         try { _log?.Invoke(message); }
-        catch (Exception error) { Trace.TraceWarning("日志回调失败：" + error.Message); }
+        catch (Exception error) { Trace.TraceWarning(Text.Format("LoaderInstaller", "LogCallbackFailed", error.Message)); }
     }
 }

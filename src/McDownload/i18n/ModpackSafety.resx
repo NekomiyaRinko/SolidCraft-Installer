@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="FileHashMismatch" xml:space="preserve"><value>整合包文件摘要校验失败。</value></data>
+  <data name="FileHashMissing" xml:space="preserve"><value>整合包文件缺少可验证摘要。</value></data>
+  <data name="FileSizeMismatch" xml:space="preserve"><value>整合包文件大小不一致。</value></data>
+  <data name="FileTooLarge" xml:space="preserve"><value>整合包文件超过预期大小。</value></data>
+  <data name="InvalidFileHash" xml:space="preserve"><value>整合包文件摘要不合法。</value></data>
+  <data name="InvalidFileSize" xml:space="preserve"><value>整合包文件大小不合法。</value></data>
+  <data name="InvalidRelativePath" xml:space="preserve"><value>整合包路径不是有效的相对路径。</value></data>
+  <data name="ManagedFileConflict" xml:space="preserve"><value>整合包不能覆盖受管文件：{0}</value></data>
+  <data name="TargetPathMissing" xml:space="preserve"><value>文件目标路径缺失。</value></data>
+  <data name="UnsupportedDownloadAddress" xml:space="preserve"><value>整合包下载地址不受支持。请使用可信 HTTPS 下载源。</value></data>
+</root>
