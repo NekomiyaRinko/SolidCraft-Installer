@@ -1,13 +1,15 @@
 using McDownload.i18n;
-using System.Security.Cryptography;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using McDownload.Model;
 
 namespace McDownload.Service;
 
-public sealed class GameDownloadService(InstanceManager instances, VersionResolver versions, HmclFetchTask fetcher)
+public sealed class GameDownloadService(InstanceManager instances, VersionResolver versions, HmclFetchTask fetcher,
+    int maxConcurrency = 8)
 {
+    private readonly GameFileDownloader _files = new(fetcher, maxConcurrency);
+
     public async Task<InstanceMetadata> InstallAsync(InstanceId id, MinecraftVersionEntry entry, OperationContext context)
     {
         var token = context.CancellationToken;
@@ -22,8 +24,8 @@ public sealed class GameDownloadService(InstanceManager instances, VersionResolv
         var resolved = await versions.ResolveLockedAsync(vanilla, metadata, new(id, 64, true), token);
         var json = resolved.EffectiveDocument.Json;
         long sequence = 0;
-        void Report(OperationStep step, string name, double? fraction = null) => context.Progress?.Report(new(context.OperationId, id,
-            Interlocked.Increment(ref sequence), OperationStage.Downloading, null, fraction, 0, null, name, step));
+        void Report(OperationStep step, string name, double? fraction = null, OperationStage stage = OperationStage.Downloading) => context.Progress?.Report(new(context.OperationId, id,
+            Interlocked.Increment(ref sequence), stage, null, fraction, 0, null, name, step));
         Report(OperationStep.Client, Text.Get("GameDownloadService", "DownloadingClient"), 0);
         await FetchAsync(json["downloads"]?["client"] as JsonObject ?? throw new InvalidDataException(Text.Get("GameDownloadService", "ClientMissing")), paths.ClientJarFile, token,
             (bytes, total) => Report(OperationStep.Client, Text.Get("GameDownloadService", "DownloadingClient"), total is > 0 ? (double)bytes / total.Value : null));
@@ -33,24 +35,30 @@ public sealed class GameDownloadService(InstanceManager instances, VersionResolv
         {
             var applicableLibraries = libraries.OfType<JsonObject>().Where(IsWindows).ToArray();
             await using var libraryLease = await instances.LockLibrariesAsync(token);
-            int completed = 0;
-            await fetcher.ForEachAsync(applicableLibraries, 8, async (library, cancellation) =>
+            var files = new List<GameDownloadFile>();
+            foreach (var library in applicableLibraries)
             {
-                cancellation.ThrowIfCancellationRequested();
-                Report(OperationStep.Libraries, Text.Format("GameDownloadService", "DownloadingLibrary", library["name"]?.GetValue<string>()),
-                    (double)Volatile.Read(ref completed) / Math.Max(1, applicableLibraries.Length));
                 if (library["downloads"]?["artifact"] is JsonObject artifact)
-                    await FetchAsync(artifact, InstanceManager.Child(paths.LibrariesDirectory, VersionResolver.Text(artifact, "path")), cancellation);
+                    files.Add(Describe(artifact, InstanceManager.Child(paths.LibrariesDirectory, VersionResolver.Text(artifact, "path"))));
                 if (library["natives"]?["windows"]?.GetValue<string>() is string classifier)
                 {
                     classifier = classifier.Replace("${arch}", Environment.Is64BitOperatingSystem ? "64" : "32");
                     var native = library["downloads"]?["classifiers"]?[classifier] as JsonObject
                         ?? throw new InvalidDataException(Text.Get("GameDownloadService", "NativeMissing"));
-                    await FetchAsync(native, InstanceManager.Child(paths.LibrariesDirectory, VersionResolver.Text(native, "path")), cancellation);
+                    files.Add(Describe(native, InstanceManager.Child(paths.LibrariesDirectory, VersionResolver.Text(native, "path"))));
                 }
-                int count = Interlocked.Increment(ref completed);
-                if (count % 10 == 0 || count == applicableLibraries.Length) Report(OperationStep.Libraries, Text.Format("GameDownloadService", "LibraryProgress", count, applicableLibraries.Length), (double)count / Math.Max(1, applicableLibraries.Length));
-            }, token);
+            }
+            await _files.DownloadAsync(files, token,
+                (count, total) =>
+                {
+                    if (count % 10 == 0 || count == total) Report(OperationStep.Libraries,
+                        Text.Format("GameDownloadService", "LibraryProgress", count, total), (double)count / Math.Max(1, total));
+                },
+                (count, total) =>
+                {
+                    if (count % 10 == 0 || count == total) Report(OperationStep.Libraries,
+                        Text.Format("GameDownloadService", "VerifyingLibraries", count, total), stage: OperationStage.Verifying);
+                });
         }
         Report(OperationStep.Libraries, Text.Get("GameDownloadService", "LibrariesCompleted"), 1);
         Report(OperationStep.Assets, Text.Get("GameDownloadService", "DownloadingAssets"), 0);
@@ -59,26 +67,40 @@ public sealed class GameDownloadService(InstanceManager instances, VersionResolv
             string indexId = VersionResolver.Text(assetIndex, "id"); InstanceManager.ValidateName(indexId);
             string indexPath = InstanceManager.Child(paths.AssetsDirectory, "indexes/" + indexId + ".json");
             Report(OperationStep.Assets, Text.Get("GameDownloadService", "DownloadingAssetIndex"), 0);
-            await using (var assetsLease = await instances.LockLibrariesAsync(token))
-                await FetchAsync(assetIndex, indexPath, token);
+            await using var assetsLease = await instances.LockLibrariesAsync(token);
+            await FetchAsync(assetIndex, indexPath, token);
             var index = await InstanceManager.ReadObjectAsync(indexPath, token);
             var objects = index["objects"] as JsonObject ?? throw new InvalidDataException(Text.Get("GameDownloadService", "AssetIndexInvalid"));
             var entries = objects.ToArray();
-            int completed = 0;
-            await fetcher.ForEachAsync(entries, 8, async (item, cancellation) =>
+            var files = entries.Select(item =>
             {
-                cancellation.ThrowIfCancellationRequested();
                 string hash = VersionResolver.Text(item.Value, "hash"); VersionResolver.ValidateSha1(hash);
                 string relative = hash[..2] + "/" + hash;
-                string objectPath = InstanceManager.Child(paths.AssetsDirectory, "objects/" + relative);
-                await FetchAsync(new JsonObject { ["url"] = "https://resources.download.minecraft.net/" + relative,
-                    ["sha1"] = hash, ["size"] = item.Value?["size"]?.DeepClone() }, objectPath, cancellation);
-                if (index["virtual"]?.GetValue<bool>() == true)
-                    await CopyAsync(objectPath, InstanceManager.Child(paths.AssetsDirectory, "virtual/" + indexId + "/" + item.Key), cancellation);
-                if (index["map_to_resources"]?.GetValue<bool>() == true)
-                    await CopyAsync(objectPath, InstanceManager.Child(paths.GameDirectory, "resources/" + item.Key), cancellation);
+                return new GameDownloadFile(new Uri("https://resources.download.minecraft.net/" + relative),
+                    InstanceManager.Child(paths.AssetsDirectory, "objects/" + relative), hash, item.Value?["size"]?.GetValue<long>());
+            }).ToArray();
+            await _files.DownloadAsync(files, token,
+                (count, total) =>
+                {
+                    if (count % 50 == 0 || count == total) Report(OperationStep.Assets,
+                        Text.Format("GameDownloadService", "AssetProgress", count, total), (double)count / Math.Max(1, total));
+                },
+                (count, total) =>
+                {
+                    if (count % 50 == 0 || count == total) Report(OperationStep.Assets,
+                        Text.Format("GameDownloadService", "VerifyingAssets", count, total), stage: OperationStage.Verifying);
+                });
+            bool virtualAssets = index["virtual"]?.GetValue<bool>() == true;
+            bool mapToResources = index["map_to_resources"]?.GetValue<bool>() == true;
+            var copies = PlanAssetCopies(entries, paths.AssetsDirectory, paths.GameDirectory, indexId, virtualAssets, mapToResources);
+            int completed = 0;
+            if (virtualAssets || mapToResources)
+                await fetcher.ForEachAsync(copies, maxConcurrency, async (copy, cancellation) =>
+            {
+                cancellation.ThrowIfCancellationRequested();
+                await CopyAsync(copy.Source, copy.Target, cancellation);
                 int count = Interlocked.Increment(ref completed);
-                if (count % 50 == 0 || count == entries.Length) Report(OperationStep.Assets, Text.Format("GameDownloadService", "AssetProgress", count, entries.Length), (double)count / Math.Max(1, entries.Length));
+                if (count % 50 == 0 || count == copies.Count) Report(OperationStep.Assets, Text.Format("GameDownloadService", "AssetProgress", count, copies.Count), (double)count / Math.Max(1, copies.Count));
             }, token);
         }
         Report(OperationStep.Assets, Text.Get("GameDownloadService", "AssetsCompleted"), 1);
@@ -97,14 +119,32 @@ public sealed class GameDownloadService(InstanceManager instances, VersionResolv
     }
     private async Task FetchAsync(JsonObject descriptor, string path, CancellationToken token, Action<long, long?>? progress = null)
     {
-        string hash = VersionResolver.Text(descriptor, "sha1"); VersionResolver.ValidateSha1(hash);
-        if (File.Exists(InstanceManager.Extended(path)))
+        var file = Describe(descriptor, path);
+        VersionResolver.ValidateSha1(file.Sha1);
+        if (await GameFileDownloader.VerifyAsync(file, token)) return;
+        await fetcher.DownloadAsync(file.Uri, path, file.Sha1, file.Size, token, progress);
+    }
+    private static GameDownloadFile Describe(JsonObject descriptor, string path) => new(
+        new Uri(VersionResolver.Text(descriptor, "url")), path, VersionResolver.Text(descriptor, "sha1"), descriptor["size"]?.GetValue<long>());
+    internal static IReadOnlyCollection<(string Source, string Target)> PlanAssetCopies(
+        IReadOnlyCollection<KeyValuePair<string, JsonNode?>> entries, string assetsDirectory, string gameDirectory,
+        string indexId, bool virtualAssets, bool mapToResources)
+    {
+        var copies = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in entries)
         {
-            await using var cached = new FileStream(InstanceManager.Extended(path), FileMode.Open, FileAccess.Read, FileShare.Read);
-            if (Convert.ToHexString(await SHA1.HashDataAsync(cached, token)).Equals(hash, StringComparison.OrdinalIgnoreCase)) return;
+            string hash = VersionResolver.Text(item.Value, "hash"); VersionResolver.ValidateSha1(hash);
+            string source = InstanceManager.Child(assetsDirectory, "objects/" + hash[..2] + "/" + hash);
+            void Add(string target)
+            {
+                if (copies.TryGetValue(target, out var previous) && !previous.Equals(source, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException(Text.Get("GameDownloadService", "ConflictingFile"));
+                copies.TryAdd(target, source);
+            }
+            if (virtualAssets) Add(InstanceManager.Child(assetsDirectory, "virtual/" + indexId + "/" + item.Key));
+            if (mapToResources) Add(InstanceManager.Child(gameDirectory, "resources/" + item.Key));
         }
-        var uri = new Uri(VersionResolver.Text(descriptor, "url")); VersionResolver.RequireHttps(uri);
-        await fetcher.DownloadAsync(uri, path, hash, descriptor["size"]?.GetValue<long>(), token, progress);
+        return copies.Select(x => (x.Value, x.Key)).ToArray();
     }
     private static Task CopyAsync(string source, string target, CancellationToken token) => InstanceManager.AtomicWriteAsync(target, async (output, ct) =>
     {

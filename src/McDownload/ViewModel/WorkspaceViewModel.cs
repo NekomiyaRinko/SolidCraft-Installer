@@ -17,6 +17,8 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     private string? _sessionCurseForgeKey;
     public bool IsUpdatingCredentials { get; set; }
     public bool HasCurseForgeApiKey => !string.IsNullOrWhiteSpace(_sessionCurseForgeKey);
+    internal Task RememberCurseForgeApiKeyAsync(CurseForgeCredentialStore credentials) =>
+        credentials.SaveAsync(_sessionCurseForgeKey ?? throw new InvalidOperationException(Text.Get("Settings", "CredentialMissing")));
     public void SetCurseForgeApiKey(string? key)
     {
         if (IsBusy) throw new InvalidOperationException(Text.Get("Workspace", "WaitForQueueBeforeCredentials"));
@@ -61,6 +63,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     public InstalledVersionScanner InstalledVersions { get; private set; } = null!;
     public ModpackImportService Modpacks { get; private set; } = null!;
     public long ConfigurationVersion { get; private set; }
+    public int MaxDownloadThreads { get; private set; } = 8;
     public WorkspaceViewModel(HttpClient? http = null, DiagnosticLog? diagnostics = null, Func<string?>? curseForgeApiKey = null,
         HttpMessageHandler? curseForgeHandler = null)
     {
@@ -79,15 +82,18 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string? error;
     public event EventHandler? Changed;
     public event EventHandler? ConfigurationChanged;
-    public void Configure(string root, DownloadSource downloadSource = DownloadSource.Bmclapi)
+    public void Configure(string root, DownloadSource downloadSource = DownloadSource.Bmclapi, int? maxDownloadThreads = null)
     {
         if (IsBusy) throw new InvalidOperationException(Text.Get("Workspace", "CannotSwitchDirectory"));
+        int threads = maxDownloadThreads ?? MaxDownloadThreads;
+        if (threads is < 1 or > 64) throw new ArgumentOutOfRangeException(nameof(maxDownloadThreads));
+        MaxDownloadThreads = threads;
         Instances = new(root);
         DownloadProvider = new(downloadSource, Log);
         Fetcher = new(_http, DownloadProvider, _diagnostics);
         Versions = new(Instances, Fetcher);
         Loaders = new(Instances, Versions, Fetcher, Log);
-        Games = new(Instances, Versions, Fetcher);
+        Games = new(Instances, Versions, Fetcher, threads);
         Catalog = new(Fetcher);
         InstalledVersions = new(Instances);
         Modpacks = new(Instances, Versions, Games, Loaders, _curseforge, _modpackDownloads);

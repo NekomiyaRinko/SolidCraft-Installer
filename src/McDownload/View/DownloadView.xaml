@@ -29,7 +29,7 @@
                 <Grid MinHeight="245" Background="#F9FBFE">
                     <Rectangle x:Name="ModpackDropOutline" Stroke="#B8C9DC" StrokeThickness="2" StrokeDashArray="4,3" RadiusX="5" RadiusY="5" IsHitTestVisible="False"/>
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20,28">
-                        <Path Data="M 4 25 L 4 34 L 34 34 L 34 25 M 19 25 L 19 2 M 10 11 L 19 2 L 28 11" Stroke="#7A9DBF" StrokeThickness="1.6" Width="38" Height="38" Stretch="Uniform" HorizontalAlignment="Center" Margin="0,0,0,16"/>
+                        <Path Data="M 4 25 L 4 34 L 34 34 L 34 25 M 19 2 L 19 25 M 10 16 L 19 25 L 28 16" Stroke="#7A9DBF" StrokeThickness="1.6" Width="38" Height="38" Stretch="Uniform" HorizontalAlignment="Center" Margin="0,0,0,16"/>
                         <TextBlock Text="{i18n:Loc DownloadView, DragModpackHint}" FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
                         <TextBlock Text="{i18n:Loc DownloadView, ModpackFormats}" Foreground="#65758A" Margin="0,10,0,18" TextAlignment="Center" TextWrapping="Wrap"/>
                         <Button x:Name="BrowseModpackButton" Content="{i18n:Loc DownloadView, ChooseFile}" Style="{StaticResource Primary}" Command="{Binding BrowseCommand}" HorizontalAlignment="Center" Margin="0"/>

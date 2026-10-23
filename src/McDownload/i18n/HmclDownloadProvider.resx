@@ -6,5 +6,5 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="FallbackStarted" xml:space="preserve"><value>BMCLAPI 请求失败，回退官方源：{0} {1}</value></data>
   <data name="FallbackSucceeded" xml:space="preserve"><value>官方源回退成功：{0}</value></data>
-  <data name="NodeForbidden" xml:space="preserve"><value>BMCLAPI 节点拒绝访问（403），该官方来源 5 分钟内使用官方源：{0}</value></data>
+  <data name="NodeForbidden" xml:space="preserve"><value>BMCLAPI 节点拒绝访问（403）， 5 分钟内使用官方源：{0}</value></data>
 </root>

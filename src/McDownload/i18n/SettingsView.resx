@@ -20,7 +20,7 @@
   <data name="RememberApiKey" xml:space="preserve"><value>在此电脑记住 API key</value></data>
   <data name="Apply" xml:space="preserve"><value>应用</value></data>
   <data name="Clear" xml:space="preserve"><value>清除</value></data>
-  <data name="ApiKeyStorageNotice" xml:space="preserve"><value>默认仅本次运行有效。勾选记住后通过 Windows 加密保存，仅当前 Windows 用户可读取。不会写入普通设置、实例记录或日志。</value></data>
+  <data name="ApiKeyStorageNotice" xml:space="preserve"><value>默认仅本次运行有效。勾选记住后在本地加密保存，仅当前用户可读取。不会写入普通设置、实例记录或日志。</value></data>
   <data name="GameDirectory" xml:space="preserve"><value>游戏目录</value></data>
   <data name="MinecraftRoot" xml:space="preserve"><value>Minecraft 根目录</value></data>
   <data name="UseDefaultRoot" xml:space="preserve"><value>使用程序目录下的 .minecraft</value></data>
@@ -33,4 +33,6 @@
   <data name="OpenLogFolder" xml:space="preserve"><value>打开日志文件夹</value></data>
   <data name="ExportLogs" xml:space="preserve"><value>导出日志</value></data>
   <data name="DeleteLogs" xml:space="preserve"><value>删除日志</value></data>
+  <data name="MaxDownloadThreads" xml:space="preserve"><value>最大线程数</value></data>
+  <data name="DownloadThreadsHint" xml:space="preserve"><value>范围 1–64，默认 8。限制游戏资源与依赖库的并行下载和校验数量，任务队列仍按顺序逐项执行。</value></data>
 </root>

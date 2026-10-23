@@ -97,6 +97,27 @@ internal static class SettingsStyleChecks
                     "losing focus validates and automatically saves a setting");
             check(model.State.ConfigurationVersion == configuration, "saving preferences leaves instance services and selections intact");
 
+            var threads = (TextBox)view.FindName("MaxDownloadThreadsInput");
+            check(settings.MaxDownloadThreads == 8 && model.State.MaxDownloadThreads == 8, "old settings default to eight download threads");
+            threads.BringIntoView(); threads.Focus(); threads.Text = "3";
+            check(settings.MaxDownloadThreads == 8, "thread count waits for focus loss");
+            javaBrowse.Focus(); await Flush(window); await settings.PendingSave;
+            using (var saved = JsonDocument.Parse(await File.ReadAllBytesAsync(settingsFile)))
+                check(saved.RootElement.GetProperty("maxDownloadThreads").GetString() == "3" && model.State.MaxDownloadThreads == 3,
+                    "thread setting is saved and applied to download services");
+            var reloaded = new SettingsViewModel(model.State, settingsFile);
+            await reloaded.LoadAsync();
+            check(reloaded.MaxDownloadThreads == 3 && model.State.MaxDownloadThreads == 3, "thread setting survives reload");
+            foreach (int invalid in new[] { 0, 65 })
+            {
+                byte[] before = await File.ReadAllBytesAsync(settingsFile);
+                settings.MaxDownloadThreads = invalid; await settings.PendingSave;
+                check(model.State.MaxDownloadThreads == 3 && (await File.ReadAllBytesAsync(settingsFile)).SequenceEqual(before),
+                    "out-of-range thread setting preserves saved and active configuration: " + invalid);
+            }
+            settings.MaxDownloadThreads = 8; await settings.PendingSave;
+            configuration = model.State.ConfigurationVersion;
+
             byte[] beforeInvalid = await File.ReadAllBytesAsync(settingsFile);
             settings.DefaultMemoryMb = 1;
             await settings.PendingSave;
@@ -122,10 +143,13 @@ internal static class SettingsStyleChecks
             var running = model.State.EnqueueAsync("settings busy check", context => gate.Task.WaitAsync(context.CancellationToken));
             byte[] busyBefore = await File.ReadAllBytesAsync(settingsFile);
             settings.DefaultMemoryMb = 12000;
+            settings.MaxDownloadThreads = 4;
             await settings.PendingSave;
-            check((await File.ReadAllBytesAsync(settingsFile)).SequenceEqual(busyBefore) && settings.Message.Contains("任务队列"),
+            check((await File.ReadAllBytesAsync(settingsFile)).SequenceEqual(busyBefore) && settings.Message.Contains("任务队列") &&
+                model.State.MaxDownloadThreads == 8 && !threads.IsEnabled,
                 "automatic settings changes remain blocked during queued work");
             gate.TrySetResult(); await running;
+            settings.MaxDownloadThreads = 8;
             settings.DefaultMemoryMb = 11000;
             await settings.PendingSave;
 

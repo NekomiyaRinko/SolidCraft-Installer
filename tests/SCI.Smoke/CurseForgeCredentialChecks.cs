@@ -96,8 +96,19 @@ internal static class CurseForgeCredentialChecks
             using (var reloaded = new WorkspaceViewModel(http, new DiagnosticLog(Path.Combine(folder, "reload-logs"))))
             {
                 var loadedSettings = new SettingsViewModel(reloaded, settingsFile);
+                var loadedView = new SettingsView { DataContext = loadedSettings };
                 var loadedImport = new ModpackImportViewModel(reloaded, loadedSettings);
                 await loadedSettings.LoadAsync();
+                check(((PasswordBox)loadedView.FindName("CurseForgeKeyInput")).Password == new string('*', 64),
+                    "startup credential load displays sixty-four fixed stars");
+                var lateView = new SettingsView { DataContext = loadedSettings };
+                check(((PasswordBox)lateView.FindName("CurseForgeKeyInput")).Password == new string('*', 64),
+                    "settings created after credential load displays sixty-four stars");
+                loadedSettings.ClearCurseForgeKeyCommand.Execute(null);
+                check(((PasswordBox)loadedView.FindName("CurseForgeKeyInput")).Password.Length == 0,
+                    "clearing credentials removes the loaded placeholder");
+                loadedSettings.RememberCurseForgeKey = true;
+                await loadedSettings.ApplyCurseForgeKeyAsync(key);
                 check(reloaded.HasCurseForgeApiKey && loadedSettings.RememberCurseForgeKey, "new settings session loads saved encrypted key automatically");
                 check(loadedImport.CurseForgeAccessMessage.StartsWith("已配置"), "startup-loaded encrypted key updates the download credential notice");
             }
@@ -129,7 +140,7 @@ internal static class CurseForgeCredentialChecks
             check(password.ActualWidth > 250 && ((Button)view.FindName("CurseForgeConsoleButton")).ActualWidth < password.ActualWidth,
                 "credential form and console link fit minimum window width");
             window.Width = 1120; window.Height = 780;
-            check(password.Password.Length == 0 && Find<TextBlock>(view).Any(x => x.Text.Contains("不是账号密码")),
+            check(password.Password == new string('*', 64) && Find<TextBlock>(view).Any(x => x.Text.Contains("不是账号密码")),
                 "credential UI masks input and explains API key purpose below it");
             settings.ClearCurseForgeKeyCommand.Execute(null);
             var import = model.Download.Modpacks;
@@ -144,13 +155,36 @@ internal static class CurseForgeCredentialChecks
                 "unconfigured download notice and preflight agree before applying via button");
             password.Password = key;
             ((Button)view.FindName("ApplyCurseForgeKeyButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            check(password.Password.Length == 0 && model.State.HasCurseForgeApiKey && settings.CurseForgeMessage.Contains("已配置"),
-                "apply button clears input but retains the configured session key");
+            check(password.Password == new string('*', 64) && password.PasswordChar == '*' && model.State.HasCurseForgeApiKey && settings.CurseForgeMessage.Contains("已配置"),
+                "apply button replaces the real key with sixty-four fixed stars");
+            ((Button)view.FindName("ApplyCurseForgeKeyButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            check(password.Password == new string('*', 64) && settings.CurseForgeMessage.Contains("已配置"),
+                "repeated apply does not submit the display placeholder");
+            settings.RememberCurseForgeKey = true;
+            ((Button)view.FindName("ApplyCurseForgeKeyButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            using (var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
+                while (settings.IsUpdatingCurseForgeKey) await Task.Delay(10, deadline.Token);
+            check(password.Password == new string('*', 64) && File.Exists(file) && await store.LoadAsync() == key,
+                "placeholder apply can remember the existing key without storing stars");
+            settings.RememberCurseForgeKey = false;
+            ((Button)view.FindName("ApplyCurseForgeKeyButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            check(password.Password == new string('*', 64) && !File.Exists(file) && model.State.HasCurseForgeApiKey,
+                "placeholder apply can return to memory-only mode without replacing the key");
             model.CurrentPage = "Download"; model.Download.IsModpackTab = true; window.UpdateLayout();
             check(notice.IsVisible && notice.Text.StartsWith("已配置") && !import.HasError && import.HasPack,
                 "returning to download updates credential notice and removes stale missing-key error without losing preview");
             await model.State.Modpacks.CheckAccessAsync(import.Definition, Array.Empty<string>(), default);
             check(api.Requests == 2, "actual workspace resolver uses key from apply button for file and project preflight requests");
+            model.CurrentPage = "Settings"; window.UpdateLayout();
+            password.BringIntoView();
+            await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            password.Focus();
+            check(password.Password.Length == 0, "editing a configured key clears the placeholder before replacement");
+            password.Password = "invalid\r\nkey";
+            ((Button)view.FindName("ApplyCurseForgeKeyButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            check(password.Password.Length == 0 && settings.CurseForgeMessage.Contains("换行"),
+                "failed apply does not display a success placeholder");
+            model.CurrentPage = "Download"; window.UpdateLayout();
             notice.BringIntoView(); await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
             capture("SCI-curseforge-configured", window);
             import.Error = "unrelated archive failure";

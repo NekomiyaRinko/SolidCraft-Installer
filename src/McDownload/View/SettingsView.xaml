@@ -6,6 +6,9 @@
     <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="{i18n:Loc SettingsView, DownloadSource}" FontSize="17" FontWeight="SemiBold"/>
         <ComboBox x:Name="DownloadSourceCombo" ItemsSource="{Binding DownloadSources}" SelectedItem="{Binding SelectedDownloadSource}" Margin="0,12,0,0"/>
         <TextBlock Text="{i18n:Loc SettingsView, MirrorNotice}" Style="{StaticResource Label}" TextWrapping="Wrap"/>
+        <TextBlock Text="{i18n:Loc SettingsView, MaxDownloadThreads}" Style="{StaticResource Label}"/>
+        <TextBox x:Name="MaxDownloadThreadsInput" Text="{Binding MaxDownloadThreads, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True}"/>
+        <TextBlock Text="{i18n:Loc SettingsView, DownloadThreadsHint}" Style="{StaticResource Label}" TextWrapping="Wrap"/>
     </StackPanel></Border>
     <Border Style="{StaticResource Card}" IsEnabled="{Binding CanEditCurseForgeKey}"><StackPanel>
         <TextBlock Text="{i18n:Loc SettingsView, CurseForge}" FontSize="17" FontWeight="SemiBold"/>

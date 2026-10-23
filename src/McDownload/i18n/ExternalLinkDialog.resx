@@ -6,7 +6,7 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="Title" xml:space="preserve"><value>打开外部网站</value></data>
   <data name="Heading" xml:space="preserve"><value>打开外部网站？</value></data>
-  <data name="PrivacyNotice" xml:space="preserve"><value>即将在默认浏览器中打开 CurseForge 开发者控制台。网站登录和应用申请由 CurseForge 处理，SCI 不会随链接发送 API key。</value></data>
+  <data name="PrivacyNotice" xml:space="preserve"><value>即将在默认浏览器中打开 CurseForge 开发者控制台。网站登录和应用申请由 CurseForge 处理。</value></data>
   <data name="ConsoleAddress" xml:space="preserve"><value>https://console.curseforge.com/</value></data>
   <data name="Cancel" xml:space="preserve"><value>取消</value></data>
   <data name="Continue" xml:space="preserve"><value>继续打开</value></data>

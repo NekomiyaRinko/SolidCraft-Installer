@@ -21,6 +21,7 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool isUpdatingCurseForgeKey;
     [ObservableProperty] private string curseForgeMessage = Text.Get("Settings", "CredentialMissing");
     public bool CanEditCurseForgeKey => !_state.IsBusy && !IsUpdatingCurseForgeKey;
+    public bool HasConfiguredCurseForgeKey => _state.HasCurseForgeApiKey;
     private bool _autoSaveEnabled;
     private long _saveVersion;
     private int _pendingSaves;
@@ -28,6 +29,7 @@ public partial class SettingsViewModel : ObservableObject
     public static string DefaultMinecraftRoot => Path.Combine(AppContext.BaseDirectory, ".minecraft");
     [ObservableProperty] private string javaPath = "";
     [ObservableProperty] private int defaultMemoryMb = 4096;
+    [ObservableProperty] private int maxDownloadThreads = 8;
     [ObservableProperty] private string minecraftRoot = DefaultMinecraftRoot;
     [ObservableProperty] private string selectedDownloadSource = Text.Get("Settings", "BmclapiSource");
     public IReadOnlyList<string> DownloadSources { get; } = new[] { Text.Get("Settings", "BmclapiSource"), Text.Get("Settings", "OfficialSource") };
@@ -53,6 +55,7 @@ public partial class SettingsViewModel : ObservableObject
             if (args.PropertyName == nameof(WorkspaceViewModel.DiagnosticLogPath))
             { OnPropertyChanged(nameof(DiagnosticLogPath)); OnPropertyChanged(nameof(DiagnosticDirectory)); }
             if (args.PropertyName == nameof(WorkspaceViewModel.IsBusy)) OnPropertyChanged(nameof(CanEditCurseForgeKey));
+            if (args.PropertyName == nameof(WorkspaceViewModel.HasCurseForgeApiKey)) OnPropertyChanged(nameof(HasConfiguredCurseForgeKey));
         };
     }
     public void ConfirmOpenCurseForgeConsole()
@@ -63,21 +66,32 @@ public partial class SettingsViewModel : ObservableObject
         catch (Exception) { CurseForgeMessage = Text.Get("Settings", "BrowserOpenFailed"); }
     }
     partial void OnIsUpdatingCurseForgeKeyChanged(bool value) => OnPropertyChanged(nameof(CanEditCurseForgeKey));
-    public async Task ApplyCurseForgeKeyAsync(string key)
+    public async Task<bool> ApplyCurseForgeKeyAsync(string? key)
     {
-        if (!CanEditCurseForgeKey) return;
+        if (!CanEditCurseForgeKey) return false;
         IsUpdatingCurseForgeKey = true; _state.IsUpdatingCredentials = true;
         try
         {
-            key = Service.CurseForgeCredentialStore.Validate(key);
-            if (RememberCurseForgeKey) await _credentials.SaveAsync(key);
-            else _credentials.Clear();
-            _state.SetCurseForgeApiKey(key);
+            if (key is null)
+            {
+                if (!_state.HasCurseForgeApiKey) return false;
+                if (RememberCurseForgeKey) await _state.RememberCurseForgeApiKeyAsync(_credentials);
+                else _credentials.Clear();
+            }
+            else
+            {
+                key = Service.CurseForgeCredentialStore.Validate(key);
+                if (RememberCurseForgeKey) await _credentials.SaveAsync(key);
+                else _credentials.Clear();
+                _state.SetCurseForgeApiKey(key);
+            }
             CurseForgeMessage = RememberCurseForgeKey ? Text.Get("Settings", "CredentialSaved") : Text.Get("Settings", "CredentialConfigured");
+            return true;
         }
         catch (ArgumentException) { CurseForgeMessage = Text.Get("Settings", "InvalidApiKey"); }
         catch (Exception) { CurseForgeMessage = Text.Get("Settings", "CredentialApplyFailed"); }
         finally { IsUpdatingCurseForgeKey = false; _state.IsUpdatingCredentials = false; }
+        return false;
     }
     [RelayCommand] private void ClearCurseForgeKey()
     {
@@ -104,6 +118,7 @@ public partial class SettingsViewModel : ObservableObject
     { OnPropertyChanged(nameof(AssetsPath)); OnPropertyChanged(nameof(LibrariesPath)); AutoSave(); }
     partial void OnJavaPathChanged(string value) => AutoSave();
     partial void OnDefaultMemoryMbChanged(int value) => AutoSave();
+    partial void OnMaxDownloadThreadsChanged(int value) => AutoSave();
     partial void OnSelectedDownloadSourceChanged(string value) => AutoSave();
     private void AutoSave() { if (_autoSaveEnabled) _ = SaveAsync(); }
     public async Task LoadAsync()
@@ -129,12 +144,14 @@ public partial class SettingsViewModel : ObservableObject
                     MinecraftRoot = ResolveMinecraftRoot(data);
                     SelectedDownloadSource = data.GetValueOrDefault("source") == "Official" ? Text.Get("Settings", "OfficialSource") : DownloadSources[0];
                     if (int.TryParse(data.GetValueOrDefault("memory"), out int memory)) DefaultMemoryMb = memory;
+                    if (int.TryParse(data.GetValueOrDefault("maxDownloadThreads"), out int threads) && threads is >= 1 and <= 64)
+                        MaxDownloadThreads = threads;
                 }
             }
             catch (Exception ex)
             { Message = Text.Format("Settings", "SettingsReadFailed", Service.DiagnosticText.Redact(ex.Message)); _state.LogException(Text.Get("Settings", "SettingsReadLog"), ex); }
         }
-        _state.Configure(MinecraftRoot, Source);
+        _state.Configure(MinecraftRoot, Source, MaxDownloadThreads);
         _autoSaveEnabled = true;
     }
     [RelayCommand] private Task SaveAsync()
@@ -144,14 +161,17 @@ public partial class SettingsViewModel : ObservableObject
         try
         {
             if (DefaultMemoryMb < 512 || DefaultMemoryMb > 1048576) throw new ArgumentException(Text.Get("Settings", "MemoryRange"));
+            if (MaxDownloadThreads is < 1 or > 64) throw new ArgumentException(Text.Get("Settings", "ThreadRange"));
             if (JavaPath.Length > 0 && (!File.Exists(Service.InstanceManager.Extended(JavaPath)) || !JavaPath.EndsWith("java.exe", StringComparison.OrdinalIgnoreCase))) throw new ArgumentException(Text.Get("Common", "InvalidJava"));
             if (!Path.IsPathFullyQualified(MinecraftRoot)) throw new ArgumentException(Text.Get("Settings", "AbsoluteGamePath"));
             string root = Service.InstanceManager.Normal(MinecraftRoot);
-            if (_state.ConfigurationVersion == 0 || !_state.Instances.MinecraftRoot.Equals(root, StringComparison.OrdinalIgnoreCase) || _state.DownloadProvider.Source != Source)
-                _state.Configure(root, Source);
+            if (_state.ConfigurationVersion == 0 || !_state.Instances.MinecraftRoot.Equals(root, StringComparison.OrdinalIgnoreCase) ||
+                _state.DownloadProvider.Source != Source || _state.MaxDownloadThreads != MaxDownloadThreads)
+                _state.Configure(root, Source, MaxDownloadThreads);
             byte[] data = JsonSerializer.SerializeToUtf8Bytes(new Dictionary<string, string>
             { ["java"] = JavaPath, ["root"] = MinecraftRoot, ["memory"] = DefaultMemoryMb.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                ["source"] = Source.ToString(), ["rootMode"] = root.Equals(Path.GetFullPath(DefaultMinecraftRoot), StringComparison.OrdinalIgnoreCase) ? "portable" : "custom" });
+                ["source"] = Source.ToString(), ["maxDownloadThreads"] = MaxDownloadThreads.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                ["rootMode"] = root.Equals(Path.GetFullPath(DefaultMinecraftRoot), StringComparison.OrdinalIgnoreCase) ? "portable" : "custom" });
             IsSaving = true; _pendingSaves++; Message = Text.Get("Settings", "Saving");
             PendingSave = PersistAsync(PendingSave, data, version);
             return PendingSave;

@@ -9,11 +9,11 @@
   <data name="AssetsCompleted" xml:space="preserve"><value>资源文件已完成</value></data>
   <data name="ClientCompleted" xml:space="preserve"><value>客户端已完成</value></data>
   <data name="ClientMissing" xml:space="preserve"><value>客户端信息缺失。</value></data>
+  <data name="ConflictingFile" xml:space="preserve"><value>同一下载路径存在不一致的文件摘要或大小。</value></data>
   <data name="DownloadingAssetIndex" xml:space="preserve"><value>下载资源索引</value></data>
   <data name="DownloadingAssets" xml:space="preserve"><value>正在下载资源文件</value></data>
   <data name="DownloadingClient" xml:space="preserve"><value>正在下载客户端</value></data>
   <data name="DownloadingLibraries" xml:space="preserve"><value>正在下载依赖库</value></data>
-  <data name="DownloadingLibrary" xml:space="preserve"><value>下载依赖库：{0}</value></data>
   <data name="LibrariesCompleted" xml:space="preserve"><value>依赖库已完成</value></data>
   <data name="LibraryProgress" xml:space="preserve"><value>依赖库 {0}/{1}</value></data>
   <data name="NativeMissing" xml:space="preserve"><value>Windows native 信息缺失。</value></data>
@@ -21,4 +21,6 @@
   <data name="SavingVersion" xml:space="preserve"><value>正在保存版本信息</value></data>
   <data name="VersionMismatch" xml:space="preserve"><value>实例游戏版本不一致。</value></data>
   <data name="VersionSaved" xml:space="preserve"><value>版本信息已保存</value></data>
+  <data name="VerifyingAssets" xml:space="preserve"><value>正在校验游戏资源 {0}/{1}</value></data>
+  <data name="VerifyingLibraries" xml:space="preserve"><value>正在校验依赖库 {0}/{1}</value></data>
 </root>

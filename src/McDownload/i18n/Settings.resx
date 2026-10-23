@@ -15,7 +15,7 @@
   <data name="CredentialLoaded" xml:space="preserve"><value>已读取本地加密凭据。</value></data>
   <data name="CredentialLoadFailed" xml:space="preserve"><value>本地凭据无法解密或读取，请重新输入并应用 API key，或清除保存项。</value></data>
   <data name="CredentialMissing" xml:space="preserve"><value>未配置。CurseForge 整合包需要有效的应用 API key。</value></data>
-  <data name="CredentialSaved" xml:space="preserve"><value>已加密保存，仅当前 Windows 用户可读取。</value></data>
+  <data name="CredentialSaved" xml:space="preserve"><value>已加密保存。</value></data>
   <data name="ExportFailed" xml:space="preserve"><value>导出失败：{0}</value></data>
   <data name="ExportLog" xml:space="preserve"><value>日志导出失败</value></data>
   <data name="ExportLogs" xml:space="preserve"><value>导出诊断日志</value></data>
@@ -36,4 +36,5 @@
   <data name="SettingsSaveLog" xml:space="preserve"><value>设置保存失败</value></data>
   <data name="WaitForQueue" xml:space="preserve"><value>请等待任务队列结束后修改设置。</value></data>
   <data name="ZipFilter" xml:space="preserve"><value>ZIP 压缩包|*.zip</value></data>
+  <data name="ThreadRange" xml:space="preserve"><value>最大线程数范围为 1 至 64。</value></data>
 </root>

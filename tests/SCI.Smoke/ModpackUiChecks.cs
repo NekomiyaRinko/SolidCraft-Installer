@@ -71,6 +71,18 @@ internal static class ModpackUiChecks
         check(model.Download.IsModpackTab && home.IsVisible && !model.Download.IsPageBusy, "download page exposes import tab and dashed drop homepage");
         capture("SCI-modpack-home", null);
         var data = new DataObject(DataFormats.FileDrop, new[] { pack });
+        var overlay = (Grid)window.FindName("ModpackDragOverlay");
+        window.RaiseEvent(Drag(data, DragDrop.PreviewDragOverEvent, window));
+        window.RaiseEvent(Drag(data, DragDrop.PreviewDragLeaveEvent, window));
+        check(overlay.Visibility == Visibility.Collapsed, "drag leave clears overlay even with last drag coordinates still inside window");
+        window.RaiseEvent(Drag(data, DragDrop.PreviewDragOverEvent, window));
+        window.CheckModpackDrag(true, true);
+        check(overlay.Visibility == Visibility.Visible, "drag watchdog preserves valid drag over window without requiring focus");
+        window.CheckModpackDrag(false, true);
+        check(overlay.Visibility == Visibility.Collapsed, "drag watchdog clears overlay over another window without a leave event");
+        window.RaiseEvent(Drag(data, DragDrop.PreviewDragOverEvent, window));
+        window.CheckModpackDrag(true, false);
+        check(overlay.Visibility == Visibility.Collapsed, "drag watchdog clears overlay when drag ends without drop");
         foreach (string page in new[] { "Instances", "Download", "Settings", "About", "Tasks", "Loaders", "Licenses", "ProjectLicense", "ModpackResume" })
         {
             model.CurrentPage = page; window.UpdateLayout();
